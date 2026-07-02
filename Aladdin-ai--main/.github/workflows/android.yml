@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: Aladdin-ai--main
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,30 +24,39 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK path in local.properties
+        working-directory: Aladdin-ai--main
+        run: |
+          SDK_PATH="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -z "$SDK_PATH" ]; then
+            echo "ERROR: Neither ANDROID_SDK_ROOT nor ANDROID_HOME is set."
+            exit 1
+          fi
+          echo "sdk.dir=$SDK_PATH" > local.properties
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> local.properties
+          echo "Android SDK path set to: $SDK_PATH"
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('Aladdin-ai--main/**/*.gradle*', 'Aladdin-ai--main/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Clean project
-        run: ./gradlew clean
-
       - name: Build debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: Aladdin-ai--main/app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
 
       - name: Upload build logs
@@ -52,6 +65,6 @@ jobs:
         with:
           name: build-logs
           path: |
-            app/build/reports/
-            build/reports/
+            Aladdin-ai--main/app/build/reports/
+            Aladdin-ai--main/build/reports/
           if-no-files-found: ignore
