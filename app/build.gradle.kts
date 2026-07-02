@@ -127,16 +127,17 @@ android {
 }
 
 // ─── AGP 8.x androidComponents API for APK renaming ──────────────────────────
+// Renames APK files to include variant name and version
 androidComponents {
-    onVariants(selector().all()) { variant ->
-        variant.outputs.forEach { output ->
-            val versionName = variant.versionName.get()
-            val variantName = variant.name
-            output.outputFile.set(
-                project.layout.buildDirectory.file(
-                    "outputs/apk/$variantName/Aladdin-$variantName-v${versionName}.apk"
-                )
-            )
+    onVariants { variant ->
+        val appVersion = variant.versionName
+        val variantName = variant.name
+        
+        // Configure all APK outputs for this variant
+        variant.outputs.all { output ->
+            // Get the build output directory
+            val apkName = "Aladdin-$variantName-v${appVersion}.apk"
+            output.outputFileName.set(apkName)
         }
     }
 }
@@ -240,10 +241,10 @@ dependencies {
     implementation("com.google.mlkit:pose-detection-accurate:18.0.0-beta5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
-    // ─── Gemini AI ────────────────��───────────────────────────────────────
+    // ─── Gemini AI ────────────────────────────────────────────────────────
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
-    // ─── Network ──────────────────────────────────────────────────────────[...]
+    // ─── Network ───────────────────────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
@@ -255,7 +256,7 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
 
-    // ─── JavaMail ─────────────────────────────────────────────────────────[...]
+    // ─── JavaMail ────────────────────────────────────────────────────────
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
 
