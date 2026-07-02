@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.aladdin.tools"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26

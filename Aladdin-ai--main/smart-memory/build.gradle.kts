@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.aladdin.memory"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26
@@ -41,7 +41,7 @@ dependencies {
     // Kotlin
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
+
 
     // AndroidX
     implementation("androidx.core:core-ktx:1.13.1")

@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.aladdin.security"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26
@@ -52,8 +52,8 @@ dependencies {
     implementation("org.json:json:20231013")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.50")
-    ksp("com.google.dagger:hilt-compiler:2.50")
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    ksp("com.google.dagger:hilt-compiler:2.51.1")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

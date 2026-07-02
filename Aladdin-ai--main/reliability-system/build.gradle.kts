@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.aladdin.reliability"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         minSdk = 26
@@ -43,8 +43,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.50")
-    ksp("com.google.dagger:hilt-compiler:2.50")
+    implementation("com.google.dagger:hilt-android:2.51.1")
+    ksp("com.google.dagger:hilt-compiler:2.51.1")
 
     // JSON
     implementation("org.json:json:20231013")
