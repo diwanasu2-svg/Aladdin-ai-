@@ -1,0 +1,5 @@
+-keep public class com.aladdin.security.manager.SecurityManager { *; }
+-keep public class com.aladdin.security.exceptions.** { *; }
+-keep public class com.aladdin.security.validation.InputValidator { *; }
+-keep public class com.aladdin.security.secrets.SecretManager { *; }
+-keep public class com.aladdin.security.storage.** { *; }

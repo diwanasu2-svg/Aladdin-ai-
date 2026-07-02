@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_app_name">Voice Core</string>
+    <string name="voice_core_channel_name">Aladdin Voice Core</string>
+    <string name="voice_core_notification_title">Aladdin</string>
+    <string name="voice_core_listening">Listening…</string>
+    <string name="voice_core_sleeping">Sleeping…</string>
+    <string name="voice_core_speaking">Speaking…</string>
+    <string name="voice_core_stop">Stop</string>
+</resources>

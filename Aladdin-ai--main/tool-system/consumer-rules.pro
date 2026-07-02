@@ -1,0 +1,4 @@
+-keep class com.aladdin.tools.manager.ToolManager { *; }
+-keep class com.aladdin.tools.tools.BaseTool { *; }
+-keep class com.aladdin.tools.tools.ToolResult { *; }
+-keep class com.aladdin.tools.di.ToolModule { *; }

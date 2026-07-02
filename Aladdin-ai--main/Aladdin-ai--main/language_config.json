@@ -1,0 +1,127 @@
+{
+  "_comment": "Aladdin Multilingual Configuration — Feature 8. Edit paths to match your model locations.",
+  "version": "1.0.0",
+  "supported_languages": [
+    {
+      "code": "hi",
+      "name": "Hindi",
+      "native_name": "हिन्दी",
+      "script": "Devanagari",
+      "unicode_range": ["U+0900", "U+097F"],
+      "enabled": true,
+      "stt_model": "models/vosk/vosk-model-hi-0.22",
+      "whisper_language_code": "hi",
+      "tts_engine": "piper",
+      "tts_model": "models/piper/hi_IN-hindi_male-medium.onnx",
+      "tts_config": "models/piper/hi_IN-hindi_male-medium.onnx.json",
+      "tts_fallback_engine": "gtts",
+      "tts_fallback_lang_code": "hi",
+      "sample_rate": 22050,
+      "detection_threshold": 0.55,
+      "code_mixed_variant": "Hinglish",
+      "code_mixed_partner": "en"
+    },
+    {
+      "code": "gu",
+      "name": "Gujarati",
+      "native_name": "ગુજરાતી",
+      "script": "Gujarati",
+      "unicode_range": ["U+0A80", "U+0AFF"],
+      "enabled": true,
+      "stt_model": "models/vosk/vosk-model-gu-0.42",
+      "whisper_language_code": "gu",
+      "tts_engine": "piper",
+      "tts_model": "models/piper/gu_IN-cmu_indic-medium.onnx",
+      "tts_config": "models/piper/gu_IN-cmu_indic-medium.onnx.json",
+      "tts_fallback_engine": "gtts",
+      "tts_fallback_lang_code": "gu",
+      "tts_secondary_fallback_lang_code": "hi",
+      "sample_rate": 22050,
+      "detection_threshold": 0.55,
+      "code_mixed_variant": "Gujlish",
+      "code_mixed_partner": "en"
+    },
+    {
+      "code": "en",
+      "name": "English",
+      "native_name": "English",
+      "script": "Latin",
+      "unicode_range": ["U+0041", "U+007A"],
+      "enabled": true,
+      "stt_model": "models/vosk/vosk-model-small-en-us-0.15",
+      "whisper_language_code": "en",
+      "tts_engine": "piper",
+      "tts_model": "models/piper/en_US-lessac-medium.onnx",
+      "tts_config": "models/piper/en_US-lessac-medium.onnx.json",
+      "tts_fallback_engine": "gtts",
+      "tts_fallback_lang_code": "en",
+      "sample_rate": 22050,
+      "detection_threshold": 0.50,
+      "code_mixed_variant": null,
+      "code_mixed_partner": null
+    }
+  ],
+  "fallback_chains": {
+    "gu": ["gu", "hi", "en"],
+    "hi": ["hi", "en"],
+    "en": ["en"]
+  },
+  "default_language": "en",
+  "detection": {
+    "method_priority": ["unicode", "vocab", "ngram", "langdetect"],
+    "confidence_threshold": 0.55,
+    "history_window": 5,
+    "history_weight": 0.2,
+    "max_latency_ms": 200
+  },
+  "tts_switching": {
+    "max_switch_latency_ms": 100,
+    "cache_loaded_models": true,
+    "preload_on_startup": true,
+    "warm_up_phrase_en": "Hello",
+    "warm_up_phrase_hi": "नमस्ते",
+    "warm_up_phrase_gu": "નમસ્તે"
+  },
+  "whisper": {
+    "model_size": "base",
+    "auto_detect_language": true,
+    "beam_size": 5,
+    "best_of": 5,
+    "temperature": 0,
+    "condition_on_previous_text": true,
+    "initial_prompt_hi": "यह एक भारतीय हिंदी भाषा का ऑडियो है।",
+    "initial_prompt_gu": "આ ગુજરાતી ભાષામાં ઑડિઓ છે.",
+    "initial_prompt_en": "This is English audio from an Indian speaker.",
+    "suppress_tokens": [-1],
+    "no_speech_threshold": 0.6,
+    "logprob_threshold": -1.0,
+    "compression_ratio_threshold": 2.4
+  },
+  "ollama": {
+    "multilingual_model": "llama3.1",
+    "alternative_models": ["qwen2.5", "gemma3"],
+    "system_prompt_hi": "आप अलादीन हैं, एक सहायक AI असिस्टेंट। हमेशा उसी भाषा में जवाब दें जिसमें उपयोगकर्ता बात करता है। संक्षिप्त और स्पष्ट रहें।",
+    "system_prompt_gu": "તમે અલાદ્દીન છો, એક સહાયક AI. હંમેશા એ જ ભાષામાં જવાબ આપો જેમાં વપરાશકર્તા વાત કરે છે. સ્પષ્ટ અને સંક્ષિપ્ત રહો.",
+    "system_prompt_en": "You are Aladdin, a helpful AI assistant. Always reply in the same language the user speaks. Be concise and clear.",
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "timeout": 300
+  },
+  "memory": {
+    "store_language_tag": true,
+    "unicode_encoding": "utf-8",
+    "preserve_native_script": true,
+    "context_language_mixing_allowed": true
+  },
+  "model_download_urls": {
+    "vosk_hi": "https://alphacephei.com/vosk/models/vosk-model-hi-0.22.zip",
+    "vosk_gu": "https://alphacephei.com/vosk/models/vosk-model-gu-0.42.zip",
+    "vosk_en": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+    "piper_hi_onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/hindi_male/medium/hi_IN-hindi_male-medium.onnx",
+    "piper_hi_config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/hi/hi_IN/hindi_male/medium/hi_IN-hindi_male-medium.onnx.json",
+    "piper_gu_onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/gu/gu_IN/cmu_indic/medium/gu_IN-cmu_indic-medium.onnx",
+    "piper_gu_config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/gu/gu_IN/cmu_indic/medium/gu_IN-cmu_indic-medium.onnx.json",
+    "piper_en_onnx": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
+    "piper_en_config": "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json"
+  }
+}

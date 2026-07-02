@@ -1,0 +1,30 @@
+{
+  "pluginId":    "com.aladdin.plugin.sample",
+  "name":        "Sample Plugin",
+  "version":     "1.0.0",
+  "description": "Demonstrates the Aladdin plugin API — commands, config, LLM, memory, voice, tools.",
+  "author":      "Aladdin Team",
+  "mainClass":   "com.aladdin.plugin.sample.SamplePlugin",
+  "minAladdinVersion": "1.0.0",
+  "requiredPermissions": [
+    "CORE_LLM",
+    "CORE_MEMORY",
+    "CORE_VOICE",
+    "CORE_TOOLS",
+    "NOTIFICATIONS"
+  ],
+  "handledCommands": [
+    "sample.hello",
+    "sample.time",
+    "sample.echo",
+    "sample.ask",
+    "sample.remember",
+    "sample.recall",
+    "sample.notify"
+  ],
+  "tags": ["sample", "demo", "reference"],
+  "config": {
+    "greeting":   "Hello",
+    "timeFormat": "yyyy-MM-dd HH:mm:ss"
+  }
+}

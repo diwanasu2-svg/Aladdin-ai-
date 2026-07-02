@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Phase 2 – fragment_chat.xml
+  Chat fragment layout. The Compose view fills the full screen.
+  Phase 2 additions are all rendered inside Compose (ChatScreen.kt):
+    • PartialTranscriptBanner (live STT overlay)
+    • StreamingResponseCard (LLM token typing effect)
+  This XML file is the fragment container for non-Compose legacy code.
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?android:colorBackground">
+
+    <!-- Compose surface fills everything inside the fragment -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_chat_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!--
+      Phase 2: voice status footer bar (used in non-Compose flows).
+      Hidden by default; shown only in fragment-based legacy screens.
+    -->
+    <com.google.android.material.bottomappbar.BottomAppBar
+        android:id="@+id/voice_status_bar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp">
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/voice_spinner"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:visibility="gone"
+                app:indicatorSize="20dp"
+                xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+            <TextView
+                android:id="@+id/voice_status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text=""
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+        </LinearLayout>
+    </com.google.android.material.bottomappbar.BottomAppBar>
+
+</LinearLayout>

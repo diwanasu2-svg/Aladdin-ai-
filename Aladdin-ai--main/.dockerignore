@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+.git
+.env
+*.sqlite
+models/
+*.egg-info
+dist/
+build/
+.pytest_cache
+venv/
+.venv/
+node_modules/
+aladdin_project/
+*.log

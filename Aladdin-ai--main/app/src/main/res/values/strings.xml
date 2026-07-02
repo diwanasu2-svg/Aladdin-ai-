@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aladdin</string>
+    <string name="androidx_startup" translatable="false">androidx.startup</string>
+
+    <!-- ─── Wake word ─────────────────────────────────────────────────────── -->
+    <string name="wake_word">Aladdin</string>
+    <string name="wake_prompt">Say \u201cAladdin\u201d to wake</string>
+    <string name="listening">Listening\u2026</string>
+    <string name="thinking">Thinking\u2026</string>
+    <string name="ready">Ready</string>
+
+    <!-- ─── Notification channels ─────────────────────────────────────────── -->
+    <string name="notif_channel_foreground_name">Aladdin Assistant</string>
+    <string name="notif_channel_foreground_desc">Keeps Aladdin running in the background</string>
+    <string name="notif_channel_alerts_name">Alerts &amp; Reminders</string>
+    <string name="notif_channel_alerts_desc">Task alerts, reminders and important updates</string>
+    <string name="notif_channel_silent_name">Background Updates</string>
+    <string name="notif_channel_silent_desc">Silent background sync notifications</string>
+    <string name="notif_channel_downloads_name">Model Downloads</string>
+    <string name="notif_channel_downloads_desc">AI model download and setup progress</string>
+
+    <!-- ─── Notification content ──────────────────────────────────────────── -->
+    <string name="notif_foreground_title">Aladdin</string>
+    <string name="notif_foreground_text">Listening for \u201cAladdin\u201d\u2026</string>
+    <string name="notif_action_stop">Stop</string>
+    <string name="notif_action_open">Open</string>
+
+    <!-- ─── Chat UI ────────────────────────────────────────────────────────── -->
+    <string name="chat_hint">Type a message\u2026</string>
+    <string name="chat_empty">Say \u201cAladdin\u201d or type a message</string>
+    <string name="chat_empty_sub">I can help with weather, reminders, news, web search, and more.</string>
+    <string name="send">Send</string>
+    <string name="clear_chat">Clear chat</string>
+
+    <!-- ─── Model download ────────────────────────────────────────────────── -->
+    <string name="downloading_models">Downloading AI models\u2026</string>
+    <string name="models_ready">All models ready</string>
+
+    <!-- ─── Permissions ───────────────────────────────────────────────────── -->
+    <string name="perm_rationale_microphone">Aladdin needs microphone access to hear your voice commands.</string>
+    <string name="perm_rationale_camera">Aladdin needs camera access for visual analysis and document scanning.</string>
+    <string name="perm_rationale_storage">Aladdin needs storage access to save and read files.</string>
+    <string name="perm_rationale_notifications">Aladdin needs notification access to keep you updated on tasks and reminders.</string>
+    <string name="perm_rationale_location">Aladdin needs location access for location-aware reminders and weather.</string>
+
+    <!-- ─── Settings ──────────────────────────────────────────────────────── -->
+    <string name="settings_wake_word">Wake Word Detection</string>
+    <string name="settings_wake_word_desc">Listen for \u201cAladdin\u201d even when screen is off</string>
+    <string name="settings_continuous">Continuous Listening</string>
+    <string name="settings_continuous_desc">Keep mic active in background</string>
+    <string name="settings_noise">Noise Suppression</string>
+    <string name="settings_noise_desc">RNNoise real-time audio enhancement</string>
+    <string name="settings_tts">Offline TTS (Piper)</string>
+    <string name="settings_tts_desc">Use local Piper TTS \u2014 works without internet</string>
+    <string name="settings_background">Background Mode</string>
+    <string name="settings_background_desc">Keep assistant alive when app is closed</string>
+    <string name="settings_restart_service">Restart Background Service</string>
+
+    <!-- ─── Errors ────────────────────────────────────────────────────────── -->
+    <string name="error_engine_init">Failed to initialize AI engine. Check API key.</string>
+    <string name="error_model_download">Failed to download model. Check internet connection.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <!-- ─── OpenWeatherMap key (set your own key here or in BuildConfig) ─── -->
+    <string name="openweather_api_key" translatable="false"></string>
+</resources>

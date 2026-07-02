@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="memory_app_name">Smart Memory</string>
+    <string name="memory_system_name">Aladdin Smart Memory</string>
+    <string name="cleanup_notification_title">Memory Maintenance</string>
+    <string name="cleanup_notification_body">Organizing your memories…</string>
+    <string name="summary_notification_title">Memory Summary</string>
+    <string name="summary_notification_body">Summarizing today\'s conversations…</string>
+</resources>

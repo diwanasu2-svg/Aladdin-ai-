@@ -1,0 +1,42 @@
+# extras/config/home_assistant_config.yaml
+# Home Assistant Integration Configuration
+
+home_assistant:
+  enabled: false
+
+  # Connection
+  host: "192.168.1.200"          # HA server IP or hostname
+  port: 8123
+  use_ssl: false                  # Set true for https/wss
+
+  # Authentication
+  # Generate at: HA → Profile → Long-Lived Access Tokens
+  token: "YOUR_LONG_LIVED_ACCESS_TOKEN"
+
+  # WebSocket (real-time state updates)
+  websocket: true
+
+  # Entity domains to auto-discover
+  discover_domains:
+    - light
+    - switch
+    - sensor
+    - binary_sensor
+    - climate
+    - cover
+    - lock
+    - media_player
+
+  # Automations to expose to voice commands
+  automations:
+    - entity_id: automation.good_morning
+      voice_trigger: "start morning routine"
+    - entity_id: automation.good_night
+      voice_trigger: "start night routine"
+
+# Setup instructions:
+# 1. Open Home Assistant → your profile (bottom left)
+# 2. Scroll to "Long-Lived Access Tokens" → Create Token
+# 3. Paste token above
+# 4. Set enabled: true
+# 5. Restart Aladdin

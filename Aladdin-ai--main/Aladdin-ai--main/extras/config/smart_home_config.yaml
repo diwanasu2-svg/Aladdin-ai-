@@ -1,0 +1,45 @@
+# extras/config/smart_home_config.yaml
+# Smart Home Configuration for Aladdin AI
+
+smart_home:
+  enabled: true
+
+  philips_hue:
+    enabled: false
+    bridge_ip: "192.168.1.100"           # Replace with your Hue bridge IP
+    api_key: "YOUR_HUE_API_KEY"          # Auto-discovered or generated via Hue app
+    # Discovery: Run python -c "from extras.smart_home import PhilipsHueDriver; ..."
+    # Or visit http://<bridge_ip>/api to create a developer account
+
+  lifx:
+    enabled: false
+    token: "YOUR_LIFX_TOKEN"             # Get from cloud.lifx.com
+
+  tuya:
+    enabled: false
+    devices:
+      - device_id: "YOUR_DEVICE_ID"
+        local_key: "YOUR_LOCAL_KEY"
+        ip: "192.168.1.101"
+        name: "Living Room Plug"
+
+  smartthings:
+    enabled: false
+    token: "YOUR_SMARTTHINGS_TOKEN"      # From developer.smartthings.com
+
+  scenes:
+    good_morning:
+      lights: { on: true, brightness: 80, color_temp: 4000 }
+      thermostat: { temp: 22, mode: heat }
+      lock: unlock
+    good_night:
+      lights: { on: true, brightness: 10, color_temp: 2700 }
+      thermostat: { temp: 18, mode: cool }
+      lock: lock
+    movie_mode:
+      lights: { on: true, brightness: 15, color_temp: 2700 }
+      tv: { on: true }
+    away_mode:
+      lights: { on: false }
+      thermostat: { temp: 16, mode: eco }
+      lock: lock

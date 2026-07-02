@@ -1,0 +1,89 @@
+# requirements_extras.txt
+# Dependencies for ALL 10 Extra Jarvis Features
+#
+# Install all:  pip install -r requirements_extras.txt
+# Install one:  pip install <package>
+# Note: Some packages are optional — the system gracefully falls back when unavailable.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 1: Smart Home
+# ─────────────────────────────────────────────────────────────────────────────
+aiohttp>=3.9.0              # Async HTTP (Hue, LIFX, SmartThings REST)
+tinytuya>=1.14.0            # Tuya local control
+phue>=1.1                   # Philips Hue bridge (optional, uses REST directly)
+# lifx-lan                  # LIFX LAN control (uncomment if needed)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 2: Home Assistant
+# ─────────────────────────────────────────────────────────────────────────────
+websockets>=12.0            # Home Assistant WebSocket API
+# homeassistant-api>=1.0    # Optional high-level HA client
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 3: Bluetooth
+# ─────────────────────────────────────────────────────────────────────────────
+bleak>=0.21.0               # Cross-platform BLE (Linux/macOS/Windows)
+# PyBluez>=0.23             # Classic Bluetooth (Linux only, optional)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 4: Wear OS
+# ─────────────────────────────────────────────────────────────────────────────
+# (Wear OS bridge is socket-based — no extra Python packages needed)
+# Android companion: uses Wearable Data Layer API (Kotlin/Android Studio)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 5: Desktop Companion
+# ─────────────────────────────────────────────────────────────────────────────
+pystray>=0.19.5             # System tray icon (Windows/macOS/Linux)
+pillow>=10.0.0              # Tray icon image rendering
+keyboard>=0.13.5            # Global keyboard shortcuts (Linux/Windows)
+plyer>=2.1.0                # Cross-platform desktop notifications
+# win10toast>=0.9           # Windows 10 toast notifications (Windows only)
+# pyobjc-framework-Cocoa    # macOS notifications (macOS only)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 6: Web Dashboard
+# ─────────────────────────────────────────────────────────────────────────────
+fastapi>=0.111.0            # Dashboard REST + SSE API
+uvicorn[standard]>=0.29.0   # ASGI server for FastAPI
+# httpx>=0.27.0             # Async HTTP client (optional)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 7: Multi-User
+# ─────────────────────────────────────────────────────────────────────────────
+# (Built-in only — no extra packages)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 8: Voice Cloning
+# ─────────────────────────────────────────────────────────────────────────────
+TTS>=0.22.0                 # Coqui TTS + XTTS v2 voice cloning
+# torch>=2.0.0              # Required by TTS (auto-installed as dependency)
+# torchaudio>=2.0.0         # Audio processing for TTS
+# soundfile>=0.12.1         # Audio file I/O
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 9: Emotion-Aware Voice
+# ─────────────────────────────────────────────────────────────────────────────
+pyttsx3>=2.90               # Offline TTS with speed/volume control
+gTTS>=2.5.0                 # Google TTS (online, free tier)
+# transformers>=4.40.0      # ML-based emotion detection (optional, heavy)
+# torch>=2.0.0              # Required by transformers
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Feature 10: Offline-First
+# ─────────────────────────────────────────────────────────────────────────────
+llama-cpp-python>=0.2.77    # Local LLM inference (GGUF format)
+# For GPU acceleration on NVIDIA: CMAKE_ARGS="-DLLAMA_CUBLAS=on" pip install llama-cpp-python
+# For Metal (Apple Silicon):      CMAKE_ARGS="-DLLAMA_METAL=on" pip install llama-cpp-python
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Offline models to download (place in models/gguf/):
+# ─────────────────────────────────────────────────────────────────────────────
+# Phi-3 Mini (recommended, 2.3GB):
+#   huggingface-cli download microsoft/Phi-3-mini-4k-instruct-gguf phi-3-mini-4k-instruct-q4.gguf --local-dir models/gguf
+#
+# Llama-3 8B (balanced, 4.9GB):
+#   huggingface-cli download bartowski/Meta-Llama-3-8B-Instruct-GGUF Meta-Llama-3-8B-Instruct-Q4_K_M.gguf --local-dir models/gguf
+#
+# Gemma-2 2B (lightweight, 1.6GB):
+#   huggingface-cli download google/gemma-2-2b-it-GGUF gemma-2-2b-it-q4_k_m.gguf --local-dir models/gguf

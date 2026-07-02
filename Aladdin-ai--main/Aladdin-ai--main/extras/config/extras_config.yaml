@@ -1,0 +1,80 @@
+# extras/config/extras_config.yaml
+# Master configuration for ALL 10 Extra Jarvis Features
+
+extras:
+
+  # Feature 1: Smart Home
+  smart_home:
+    enabled: true
+    # See smart_home_config.yaml for detailed device settings
+
+  # Feature 2: Home Assistant
+  home_assistant:
+    enabled: false
+    # See home_assistant_config.yaml for connection settings
+
+  # Feature 3: Bluetooth
+  bluetooth:
+    enabled: true
+    scan_on_start: false
+    auto_connect_known: true
+    monitor_interval_seconds: 30
+
+  # Feature 4: Wear OS
+  wear_os:
+    enabled: true
+    bridge_port: 45678
+    # On Android: install companion app and point it to this host:port
+
+  # Feature 5: Desktop Companion
+  desktop:
+    enabled: true
+    sync_dir: "~/AladdinSync"
+    tray_icon: true
+    clipboard_sync: true
+    hotkeys:
+      activate: "ctrl+alt+a"
+      voice: "ctrl+alt+v"
+
+  # Feature 6: Web Dashboard
+  dashboard:
+    enabled: true
+    host: "0.0.0.0"
+    port: 7860
+    # Access at http://localhost:7860 after starting Aladdin
+
+  # Feature 7: Multi-User
+  multi_user:
+    enabled: true
+    data_dir: ".data/users"
+    default_user: "guest"
+    require_pin: false
+
+  # Feature 8: Voice Cloning
+  voice_cloning:
+    enabled: true
+    data_dir: ".data/voices"
+    engine: "xtts"           # xtts | coqui | styletts2
+    require_consent: true
+    min_sample_duration_seconds: 60   # At least 1 minute of clean audio
+
+  # Feature 9: Emotion Voice
+  emotion_voice:
+    enabled: true
+    use_ml_detection: false   # Set true to use transformers (heavier)
+    default_tts_backend: "pyttsx3"   # pyttsx3 | gtts | xtts
+
+  # Feature 10: Offline First
+  offline_first:
+    enabled: true
+    model_dir: "models/gguf"
+    preferred_model: "phi3-mini-q4.gguf"
+    network_check_interval: 10
+    sync_retry_interval: 15
+    max_sync_attempts: 5
+    data_dir: ".data"
+
+# Download offline models:
+# Phi-3 Mini (2.3GB): huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf
+# Llama-3 8B  (4.9GB): huggingface.co/meta-llama/Meta-Llama-3-8B-GGUF
+# Gemma-2 2B  (1.6GB): huggingface.co/google/gemma-2-2b-it-GGUF

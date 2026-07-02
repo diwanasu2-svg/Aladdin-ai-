@@ -1,0 +1,44 @@
+# ============================================================
+# Aladdin AI — Phase 8 (Browser) + Phase 9 (Tools) + Phase 10 (Computer Control)
+# Additional requirements
+# ============================================================
+
+# ── Phase 8: Browser Automation ────────────────────────────
+
+# Playwright for browser automation (CAPTCHA, anti-bot, form fill)
+playwright>=1.40.0
+# After install: playwright install chromium
+
+# Anti-bot detection bypass
+playwright-stealth>=1.0.0
+
+# Retry + rate limiting
+tenacity>=8.2.0
+
+# ── Phase 9: Communication Tools ───────────────────────────
+
+# HTTP client for Telegram/Discord/WhatsApp API calls
+httpx>=0.27.0
+
+# Email sending (SMTP)
+# aiosmtplib>=3.0.0
+
+# Telegram Bot API client (optional — direct HTTP also works)
+# python-telegram-bot>=21.0
+
+# Discord API client (optional — direct HTTP also works)
+# discord.py>=2.3.0
+
+# Maps / geocoding
+# geopy>=2.4.0
+
+# ── Phase 10: Computer Control ──────────────────────────────
+
+# Screen capture / display control
+# pyautogui>=0.9.54    (not available on Android backend)
+
+# File system operations (stdlib covers most needs)
+# watchdog>=4.0.0      (optional: file change monitoring)
+
+# Notification management
+# plyer>=2.1.0         (cross-platform notifications)

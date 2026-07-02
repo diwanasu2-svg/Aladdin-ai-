@@ -1,0 +1,4 @@
+-keep public class com.aladdin.reliability.manager.ReliabilityManager { *; }
+-keep public class com.aladdin.reliability.crash.** { *; }
+-keep public class com.aladdin.reliability.health.** { *; }
+-keep public class com.aladdin.reliability.validation.** { *; }

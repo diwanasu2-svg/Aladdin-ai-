@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="security_error_generic">Something went wrong. Please try again.</string>
+    <string name="security_error_storage">Secure storage is unavailable.</string>
+    <string name="security_error_validation">Invalid input. Please check your entry.</string>
+    <string name="security_error_config">App configuration error. Please re-install.</string>
+    <string name="security_error_auth">Authentication failed. Please try again.</string>
+    <string name="security_permission_denied">That operation is not permitted.</string>
+</resources>

@@ -1,0 +1,4 @@
+-keep public class com.aladdin.performance.manager.PerformanceOptimizationManager { *; }
+-keep public class com.aladdin.performance.cache.** { *; }
+-keep public class com.aladdin.performance.startup.StartupTracker { *; }
+-keep public class com.aladdin.performance.benchmark.** { *; }

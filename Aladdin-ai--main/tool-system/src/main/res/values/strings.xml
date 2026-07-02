@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tool_app_name">Tool System</string>
+    <string name="tool_system_name">Aladdin Tool System</string>
+    <!-- Replace with your OpenWeatherMap API key -->
+    <string name="openweather_api_key"></string>
+</resources>

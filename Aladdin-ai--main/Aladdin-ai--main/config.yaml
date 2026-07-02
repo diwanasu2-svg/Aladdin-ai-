@@ -1,0 +1,256 @@
+# ============================================================
+# Aladdin — AI Personal Voice Assistant Configuration
+# Updated: Multilingual Support (Hindi, Gujarati, English)
+# Features: 1-15 (all multilingual features)
+# ============================================================
+
+# ─── Speech-to-Text (Whisper) ──────────────────────────────────
+whisper:
+  model: base          # tiny | base | small | medium | large
+  device: cpu          # cpu | cuda
+  language: null       # null = auto-detect per utterance
+  # Multilingual settings — Feature 1
+  multilingual: true
+  # Whisper language support for Indian languages
+  supported_languages:
+    - en               # English (base)
+    - hi               # Hindi (Devanagari)
+    - gu               # Gujarati
+  # Per-language initial prompts for better accuracy — Feature 1
+  initial_prompt_hi: "यह एक भारतीय हिंदी भाषा का ऑडियो है।"
+  initial_prompt_gu: "આ ગુજરાતી ભાષામાં ઑડિઓ છે."
+  initial_prompt_en: "This is English audio from an Indian speaker."
+  # Beam search for accuracy
+  beam_size: 5
+  best_of: 5
+  temperature: 0
+  # Suppress hallucination
+  no_speech_threshold: 0.6
+  compression_ratio_threshold: 2.4
+  # Code-mix / accent tuning
+  condition_on_previous_text: true
+
+# ─── Language Model (Ollama) ───────────────────────────────────
+ollama:
+  host: http://localhost:11434
+  # Multilingual-capable models — Feature 2
+  # Recommended: llama3.1 (best multilingual), qwen2.5, gemma3
+  model: llama3.1
+  temperature: 0.7
+  timeout: 300
+  max_tokens: 512
+
+# ─── Text-to-Speech (Piper) — Multilingual ──────────────────────
+piper:
+  # English voice (always available)
+  model_path: voices/en_US-lessac-medium.onnx
+  config_path: null
+  speaker_id: null
+  enabled: true
+  streaming_enabled: true
+
+# ─── Multilingual TTS Configuration — Features 5, 6, 7, 8 ──────
+multilingual_tts:
+  # Piper binary location
+  piper_binary: models/piper/piper
+
+  # English TTS (Piper)
+  en_voice: models/piper/en_US-lessac-medium.onnx
+  en_config: models/piper/en_US-lessac-medium.onnx.json
+
+  # Hindi TTS (Piper) — Feature 5
+  # Download: scripts/download_models_multilingual.sh
+  hi_voice: models/piper/hi_IN-hindi_male-medium.onnx
+  hi_config: models/piper/hi_IN-hindi_male-medium.onnx.json
+
+  # Gujarati TTS (Piper) — Feature 6
+  # Download: scripts/download_models_multilingual.sh
+  # Fallback to gTTS if Piper Gujarati unavailable
+  gu_voice: models/piper/gu_IN-cmu_indic-medium.onnx
+  gu_config: models/piper/gu_IN-cmu_indic-medium.onnx.json
+
+  # Gujarati fallback — Feature 6, 9
+  gtts_enabled: true       # use Google TTS as Gujarati fallback
+  gtts_slow: false
+
+  # Voice preloading — Feature 13
+  preload_on_startup: true
+
+  # Speaking rate
+  speaking_rate: 1.0
+
+  # Notify when fallback is used — Feature 9
+  fallback_notification: true
+
+# ─── Language Detection — Feature 3 ────────────────────────────
+language_detection:
+  # Detection methods in priority order
+  methods:
+    - unicode            # fastest: Devanagari vs Gujarati vs Latin block analysis
+    - vocab              # vocabulary keyword scoring (handles romanised/Hinglish/Gujlish)
+    - ngram              # character bigram analysis
+    - langdetect         # langdetect library (optional fallback)
+  confidence_threshold: 0.55
+  # Conversation history for continuity — helps maintain language across turns
+  history_window: 5
+  history_weight: 0.2
+  # Target latency
+  max_latency_ms: 200
+
+# ─── Language Fallback Chain — Feature 9 ───────────────────────
+language_fallback:
+  gujarati: [gujarati, hindi, english]
+  hindi: [hindi, english]
+  english: [english]
+  fallback_notification: true
+
+# ─── Multilingual LLM Prompts — Feature 2 ──────────────────────
+multilingual_llm:
+  # Language-specific system prompts injected per conversation
+  use_language_prompts: true
+  # Handle code-mixed speech naturally
+  handle_code_switching: true
+  # Language-appropriate response formatting
+  culturally_appropriate: true
+
+# ─── Audio I/O & Voice Core ────────────────────────────────────
+audio:
+  sample_rate: 16000
+  silence_threshold: 0.01
+  silence_seconds: 1.2
+  max_seconds: 30.0
+
+  wake_word: aladdin
+  wake_word_enabled: true
+  wake_sensitivity: balanced
+  wake_word_threshold: 0.55
+  wake_word_cooldown: 2.0
+  wake_session_timeout: 10.0
+  microphone_gain: 1.0
+  noise_suppression_level: 1
+  continuous_listening: true
+  audio_chunk_size: 512
+  interrupt_enabled: true
+
+  vad_enabled: true
+  vad_engine: silero
+  vad_threshold: 0.5
+  vad_min_speech_ms: 100
+  vad_speech_timeout_ms: 500
+  silence_timeout_ms: 800
+  min_speech_duration_ms: 200
+  max_recording_seconds: 30.0
+  noise_suppression_enabled: true
+  noise_suppression_strength: 2
+  echo_cancellation_enabled: true
+  echo_cancellation_timeout_ms: 100
+  auto_sleep_enabled: true
+  auto_sleep_timeout_ms: 3000
+  auto_resume_enabled: true
+  auto_resume_delay_ms: 100
+
+# ─── Memory — Feature 10, 11 ──────────────────────────────────
+memory:
+  db_path: data/aladdin_memory.sqlite
+  window: 12
+  semantic_search_enabled: true
+  max_facts: 500
+  summarize_after: 50
+  profile_path: data/user_profile.json
+
+  # Multilingual memory settings
+  multilingual_db_path: data/multilingual_memory.sqlite
+  store_language_tag: true       # tag each message with detected language
+  unicode_encoding: utf-8        # ensure UTF-8 throughout
+  preserve_native_script: true   # store Devanagari/Gujarati as-is
+  context_language_mixing: true  # allow cross-language context window
+
+  project_memory_enabled: true
+  project_memory_db_path: data/project_memory.sqlite
+  location_memory_enabled: true
+  location_memory_db_path: data/location_memory.sqlite
+  reminder_memory_enabled: true
+  reminder_memory_db_path: data/reminder_memory.sqlite
+  calendar_memory_enabled: true
+  calendar_memory_db_path: data/calendar_memory.sqlite
+  conversation_summary_enabled: true
+  conversation_summary_db_path: data/conversation_summary.sqlite
+  summary_trigger_messages: 30
+  summary_max_length: 500
+  importance_scoring_enabled: true
+  vector_store_enabled: true
+  vector_store_db_path: data/memory_vectors.sqlite
+  embedding_dimensions: 256
+  embedding_cache_size: 1024
+  semantic_search_default_limit: 5
+  semantic_search_min_similarity: 0.12
+  semantic_search_rebuild_on_start: true
+  ranking_similarity_bias: 0.55
+  ranking_importance_bias: 0.30
+  ranking_recency_bias: 0.15
+
+# ─── Internet Search ──────────────────────────────────────────
+search:
+  enabled: true
+  provider: duckduckgo
+  api_key: null
+  max_results: 3
+  timeout: 10
+
+# ─── Telegram Bot (optional) ─────────────────────────────────
+telegram:
+  enabled: false
+  bot_token: null
+  allowed_users: []
+
+# ─── Calendar ────────────────────────────────────────────────
+calendar:
+  enabled: true
+  db_path: data/calendar.sqlite
+
+# ─── Reminders ───────────────────────────────────────────────
+reminder:
+  enabled: true
+  db_path: data/reminders.sqlite
+  check_interval: 30
+
+# ─── Plugins ─────────────────────────────────────────────────
+plugins:
+  enabled: []
+  plugin_dir: aladdin_core/plugins
+
+# ─── Logging ─────────────────────────────────────────────────
+logging:
+  level: INFO
+  file: logs/aladdin.log
+  max_bytes: 10485760
+  backup_count: 5
+
+# ─── Assistant Persona — multilingual — Feature 4 ────────────
+system_prompt: >-
+  You are {name}, a helpful, concise, friendly voice assistant.
+  Reply in short spoken sentences suitable for text-to-speech.
+  Be conversational and warm. When unsure, say so honestly.
+  IMPORTANT: Always reply in the same language the user uses.
+  If the user speaks Hindi, reply in Hindi.
+  If the user speaks Gujarati, reply in Gujarati.
+  If the user speaks English, reply in English.
+  If the user mixes languages (Hinglish or Gujlish), match their style.
+  Keep responses under 3 sentences unless detail is explicitly requested.
+
+# ─── Backend AI Config (new) ──────────────────────────────────────────────────
+llm:
+  provider: ollama       # openai | gemini | anthropic | ollama
+  model: llama3.1
+
+openai:
+  api_key: null          # set via OPENAI_API_KEY env var
+  default_model: gpt-4o-mini
+
+gemini:
+  api_key: null          # set via GEMINI_API_KEY env var
+  default_model: gemini-1.5-flash
+
+anthropic:
+  api_key: null          # set via ANTHROPIC_API_KEY env var
+  default_model: claude-3-haiku-20240307

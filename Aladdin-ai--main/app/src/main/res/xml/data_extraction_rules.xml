@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" path="com.aladdin.app_preferences.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" />
+        <include domain="database" />
+    </device-transfer>
+</data-extraction-rules>

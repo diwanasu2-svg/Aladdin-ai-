@@ -1,0 +1,170 @@
+workflows:
+  android-build:
+    name: Android Build Workflow
+    max_build_duration: 60
+    environment:
+      vars:
+        PACKAGE_NAME: com.aladdin.assistant
+        ANDROID_APP_ID: com.aladdin.assistant
+      android_signing:
+        - aladdin_keystore
+    scripts:
+      - name: Set up Android SDK
+        script: |
+          sdkmanager --update
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Gradle wrapper
+        script: |
+          chmod +x gradlew
+          ./gradlew --version
+      - name: Build APK (release)
+        script: |
+          ./gradlew assembleRelease
+      - name: Build AAB (release)
+        script: |
+          ./gradlew bundleRelease
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
+
+  android-test:
+    name: Android Test Workflow
+    max_build_duration: 60
+    environment:
+      vars:
+        PACKAGE_NAME: com.aladdin.assistant
+        ANDROID_APP_ID: com.aladdin.assistant
+    scripts:
+      - name: Set up Android SDK
+        script: |
+          sdkmanager --update
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Gradle wrapper
+        script: |
+          chmod +x gradlew
+          ./gradlew --version
+      - name: Run unit tests
+        script: |
+          ./gradlew test
+      - name: Run Android instrumentation tests
+        script: |
+          ./gradlew connectedAndroidTest
+    artifacts:
+      - app/build/reports/tests/**/*
+      - app/build/outputs/androidTest-results/**/*
+
+  lint-check:
+    name: Lint Check Workflow
+    max_build_duration: 30
+    environment:
+      vars:
+        PACKAGE_NAME: com.aladdin.assistant
+        ANDROID_APP_ID: com.aladdin.assistant
+    scripts:
+      - name: Set up Android SDK
+        script: |
+          sdkmanager --update
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Gradle wrapper
+        script: |
+          chmod +x gradlew
+          ./gradlew --version
+      - name: Run lint checks
+        script: |
+          ./gradlew lint
+    artifacts:
+      - app/build/reports/lint-results*.html
+      - app/build/reports/lint-results*.xml
+
+  python-checks:
+    name: Python Checks Workflow
+    max_build_duration: 30
+    environment:
+      vars:
+        PACKAGE_NAME: com.aladdin.assistant
+        ANDROID_APP_ID: com.aladdin.assistant
+        PYTHON_VERSION: "3.10"
+    scripts:
+      - name: Install Python
+        script: |
+          apt-get update -y && apt-get install -y python3.10 python3-pip || true
+          python3 --version
+      - name: Install Python dependencies
+        script: |
+          pip3 install black pylint mypy
+          if [ -f pyproject.toml ]; then
+            pip3 install .
+          fi
+          if [ -f requirements.txt ]; then
+            pip3 install -r requirements.txt
+          fi
+      - name: Check Black formatting
+        script: |
+          black --check .
+      - name: Run pylint
+        script: |
+          pylint $(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*") || true
+      - name: Run mypy
+        script: |
+          mypy . --ignore-missing-imports || true
+
+  full-build:
+    name: Full Build Workflow
+    max_build_duration: 120
+    environment:
+      vars:
+        PACKAGE_NAME: com.aladdin.assistant
+        ANDROID_APP_ID: com.aladdin.assistant
+        PYTHON_VERSION: "3.10"
+      android_signing:
+        - aladdin_keystore
+    scripts:
+      - name: Set up Android SDK
+        script: |
+          sdkmanager --update
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Gradle wrapper
+        script: |
+          chmod +x gradlew
+          ./gradlew --version
+      - name: Install Python
+        script: |
+          apt-get update -y && apt-get install -y python3.10 python3-pip || true
+          python3 --version
+      - name: Install Python dependencies
+        script: |
+          pip3 install black pylint mypy
+          if [ -f pyproject.toml ]; then
+            pip3 install .
+          fi
+          if [ -f requirements.txt ]; then
+            pip3 install -r requirements.txt
+          fi
+      - name: Check Black formatting
+        script: |
+          black --check . || true
+      - name: Run pylint
+        script: |
+          pylint $(find . -name "*.py" -not -path "./.git/*" -not -path "./build/*") || true
+      - name: Run mypy
+        script: |
+          mypy . --ignore-missing-imports || true
+      - name: Run lint checks
+        script: |
+          ./gradlew lint
+      - name: Run unit tests
+        script: |
+          ./gradlew test
+      - name: Build APK (release)
+        script: |
+          ./gradlew assembleRelease
+      - name: Build AAB (release)
+        script: |
+          ./gradlew bundleRelease
+    artifacts:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
+      - app/build/reports/lint-results*.html
+      - app/build/reports/lint-results*.xml
+      - app/build/reports/tests/**/*
+      - app/build/outputs/androidTest-results/**/*

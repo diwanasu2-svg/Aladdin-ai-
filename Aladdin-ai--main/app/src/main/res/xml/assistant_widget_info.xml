@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase 6 Item 6: AppWidgetProvider descriptor for AssistantWidgetReceiver -->
+<appwidget-provider
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:initialLayout="@layout/assistant_widget"
+    android:minWidth="250dp"
+    android:minHeight="40dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:description="@string/app_name"
+    android:previewImage="@mipmap/ic_launcher"
+    android:configure=".ui.widget.AssistantWidgetReceiver" />

@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  aladdin-backend:
+    build:
+      context: ./Aladdin-ai--main
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    user: "1000:1000"
+    volumes:
+      - aladdin-data:/data
+    env_file: .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  aladdin-frontend:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./Aladdin-ai--main/frontend:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    networks:
+      - aladdin-network
+
+networks:
+  aladdin-network:
+    driver: bridge
+
+volumes:
+  aladdin-data:

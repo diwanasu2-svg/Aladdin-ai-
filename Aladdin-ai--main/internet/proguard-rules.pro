@@ -1,0 +1,2 @@
+-keep class com.aladdin.internet.model.** { *; }
+-keep class com.aladdin.internet.api.** { *; }

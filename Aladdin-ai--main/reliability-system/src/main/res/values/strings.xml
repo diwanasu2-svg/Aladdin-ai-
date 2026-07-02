@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reliability_watchdog_channel">Aladdin Watchdog</string>
+    <string name="reliability_watchdog_notification">Reliability watchdog active</string>
+    <string name="reliability_health_ok">System healthy</string>
+    <string name="reliability_health_degraded">System degraded</string>
+    <string name="reliability_crash_recovered">Recovered from crash</string>
+    <string name="reliability_validation_pass">Startup validation passed</string>
+    <string name="reliability_validation_fail">Startup validation failed</string>
+</resources>

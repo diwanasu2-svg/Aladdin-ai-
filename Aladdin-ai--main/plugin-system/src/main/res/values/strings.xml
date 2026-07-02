@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_system_name">Aladdin Plugin System</string>
+    <string name="plugin_permission_dialog_title">Plugin Permission Request</string>
+    <string name="plugin_permission_dialog_body">"%s" is requesting the following permissions:</string>
+    <string name="plugin_permission_grant">Allow</string>
+    <string name="plugin_permission_deny">Deny</string>
+    <string name="plugin_loaded">Plugin loaded successfully</string>
+    <string name="plugin_load_failed">Failed to load plugin</string>
+    <string name="plugin_disabled">Plugin disabled</string>
+    <string name="plugin_hot_reload_success">Plugin hot-reloaded</string>
+</resources>

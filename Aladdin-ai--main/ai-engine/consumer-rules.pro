@@ -1,0 +1,3 @@
+-keep class com.aladdin.engine.engine.AIEngine { *; }
+-keep class com.aladdin.engine.models.** { *; }
+-keep class com.aladdin.engine.di.AIEngineModule { *; }

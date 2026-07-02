@@ -1,0 +1,104 @@
+# ============================================================
+# Aladdin AI — Phase 14 (AI Models) & Phase 15 (Production)
+# Requirements
+# ============================================================
+
+# ────────────────────────────────────────────────────────────
+# PHASE 14 — AI MODELS
+# ────────────────────────────────────────────────────────────
+
+# Feature 1 & 7: Local LLM + Quantized Models (llama.cpp)
+llama-cpp-python>=0.2.90        # Python bindings for llama.cpp (GGUF support)
+huggingface-hub>=0.22.0         # Model download from HuggingFace
+
+# Feature 2: MLC-LLM (GPU-accelerated inference)
+# Install from: https://mlc.ai/package/
+# pip install --pre -f https://mlc.ai/wheels mlc-llm-nightly-cpu
+# (GPU builds: mlc-llm-nightly-cu121, mlc-llm-nightly-vulkan)
+
+# Feature 3: Provider Auto-Switch
+openai>=1.30.0                  # OpenAI provider
+anthropic>=0.28.0               # Anthropic/Claude provider
+google-generativeai>=0.7.0      # Gemini provider
+requests>=2.31.0                # HTTP client (Ollama, custom APIs)
+
+# Feature 4: Streaming (WebSocket + SSE)
+aiohttp>=3.9.0                  # Async HTTP client/server
+websockets>=12.0                # WebSocket support
+sse-starlette>=1.6.0            # Server-Sent Events for FastAPI/Starlette
+
+# Feature 6: Model Caching
+diskcache>=5.6.0                # Persistent on-disk cache
+cachetools>=5.3.0               # In-memory LRU cache utilities
+
+# Feature 8: GPU Acceleration detection
+pyopencl>=2024.1                # OpenCL bindings (optional — GPU detection)
+# torch>=2.2.0                  # PyTorch for CUDA (install separately with correct CUDA version)
+
+# Feature 9 & 10: Prompt & Token Optimization
+tiktoken>=0.7.0                 # OpenAI tokenizer (fast token counting)
+sentencepiece>=0.2.0            # Llama/Mistral tokenizer
+
+# ────────────────────────────────────────────────────────────
+# PHASE 15 — PRODUCTION
+# ────────────────────────────────────────────────────────────
+
+# Feature 1-4: Testing
+pytest>=8.2.0                   # Test runner
+pytest-cov>=5.0.0               # Code coverage
+pytest-timeout>=2.3.0           # Test timeout
+pytest-benchmark>=4.0.0         # Performance benchmarks
+pytest-asyncio>=0.23.0          # Async test support
+pytest-mock>=3.14.0             # Enhanced mock fixtures
+pytest-xdist>=3.5.0             # Parallel test execution
+coverage>=7.5.0                 # Coverage analysis
+
+# Mock & Stubs
+responses>=0.25.0               # HTTP request mocking
+freezegun>=1.5.0                # Time mocking
+factory-boy>=3.3.0              # Test data factories
+
+# Feature 5: Battery Optimization
+psutil>=5.9.8                   # System resource monitoring (CPU, RAM, battery)
+
+# Feature 6: Memory Optimization (profiling)
+memory-profiler>=0.61.0         # Memory profiling decorator
+objgraph>=3.6.0                 # Object graph analysis (leak detection)
+pympler>=1.0.1                  # Memory usage analysis
+
+# Feature 8: Crash Reporting
+firebase-admin>=6.5.0           # Firebase Admin SDK (Crashlytics)
+sentry-sdk>=2.3.0               # Sentry as alternative crash reporter
+
+# Feature 9: CI/CD
+bandit>=1.7.8                   # Security vulnerability scanner
+ruff>=0.4.0                     # Fast Python linter
+mypy>=1.10.0                    # Static type checker
+types-requests>=2.31.0          # Type stubs for requests
+
+# ────────────────────────────────────────────────────────────
+# SHARED UTILITIES
+# ────────────────────────────────────────────────────────────
+python-dotenv>=1.0.1            # .env file loading
+pyyaml>=6.0.1                   # YAML config parsing
+rich>=13.7.0                    # Rich terminal output
+click>=8.1.7                    # CLI framework
+structlog>=24.2.0               # Structured logging
+prometheus-client>=0.20.0       # Metrics/monitoring export
+
+# ────────────────────────────────────────────────────────────
+# INSTALLATION NOTES
+# ────────────────────────────────────────────────────────────
+#
+# 1. llama-cpp-python with GPU support:
+#    CMAKE_ARGS="-DLLAMA_CUBLAS=on" pip install llama-cpp-python   # CUDA
+#    CMAKE_ARGS="-DLLAMA_VULKAN=on" pip install llama-cpp-python   # Vulkan
+#    CMAKE_ARGS="-DLLAMA_METAL=on"  pip install llama-cpp-python   # macOS
+#
+# 2. MLC-LLM:
+#    pip install --pre -f https://mlc.ai/wheels mlc-llm-nightly-cpu
+#    (For GPU: replace cpu with cu121 for CUDA or vulkan for Vulkan)
+#
+# 3. Model downloads:
+#    from models.local_llm import LocalLLM
+#    llm = LocalLLM(); llm.download_model("phi3-mini-q4")

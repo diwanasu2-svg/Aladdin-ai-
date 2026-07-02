@@ -1,0 +1,55 @@
+# Aladdin AI — Phase 9 & Phase 10 Python Dependencies
+# Add these to your main requirements.txt
+
+# ── Phase 9: Communication & Functional Skills ──────────────────────────────
+
+# Email
+# (uses stdlib smtplib / imaplib — no extra package needed for basic email)
+# Optional JavaMail-style: NOT needed in Python
+
+# Maps / Location
+googlemaps>=4.10.0          # Google Maps Directions & Places API
+geopy>=2.4.1                # Geocoding fallback (offline-capable)
+
+# Phone / SMS / WhatsApp (Twilio)
+twilio>=8.13.0
+
+# Telegram
+python-telegram-bot>=20.7
+
+# Discord
+aiohttp>=3.9.3              # Async HTTP for Discord REST API
+
+# Camera / QR Code
+opencv-python>=4.9.0.80     # Camera capture, QR detection, filters
+pillow>=10.2.0              # Image processing, filter fallback
+pyzbar>=0.1.9               # Barcode/QR decoding fallback
+
+# Smart Home
+phue>=1.1                   # Philips Hue Bridge control
+tinytuya>=1.13.1            # Tuya smart device local control
+
+# ── Phase 10: Computer Control ──────────────────────────────────────────────
+
+# Mouse & Keyboard (desktop)
+pynput>=1.7.6               # Mouse and keyboard simulation
+
+# Screen automation (desktop)
+pyautogui>=0.9.54           # GUI automation, screenshot, locateOnScreen
+
+# Clipboard
+pyperclip>=1.8.2            # Cross-platform clipboard read/write
+
+# System info & process management
+psutil>=5.9.8               # Running processes, system metrics
+
+# ── Optional / Platform-specific ───────────────────────────────────────────
+
+# Windows accessibility automation (Phase 10, Windows only)
+# pywinauto>=0.6.8
+
+# Linux AT-SPI accessibility (Phase 10, Linux only)
+# pyatspi>=2.46.0
+
+# macOS scripting (Phase 10, macOS only — install via brew)
+# appscript>=1.2.2

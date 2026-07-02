@@ -1,0 +1,4 @@
+-keep class com.aladdin.security.** { *; }
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+-dontwarn net.sqlcipher.**

@@ -1,0 +1,3 @@
+-keep class com.aladdin.memory.model.** { *; }
+-keep class com.aladdin.memory.repository.** { *; }
+-keep class com.aladdin.memory.di.MemoryModule { *; }

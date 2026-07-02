@@ -1,0 +1,44 @@
+# ============================================================
+# Aladdin AI — Phase 12 (Security) + Phase 13 (Reliability)
+# Additional requirements
+# ============================================================
+
+# ── Phase 12: Security ──────────────────────────────────────
+
+# JWT authentication
+PyJWT>=2.8.0
+
+# AES-256-GCM encryption, X25519 ECDH, TLS helpers
+cryptography>=41.0.0
+
+# (Optional) Redis backend for rate limiter + distributed sessions
+# redis>=5.0.0
+
+# (Optional) HashiCorp Vault integration for key storage
+# hvac>=2.0.0
+
+# (Optional) AWS Secrets Manager integration
+# boto3>=1.34.0
+
+# ── Phase 13: Reliability ───────────────────────────────────
+
+# System metrics: CPU, memory, disk, battery, network
+psutil>=5.9.0
+
+# Structured JSON logging (optional — stdlib logging used by default)
+# structlog>=24.0.0
+
+# (Optional) Remote log shipping to Logstash/ELK
+# python-logstash>=0.4.8
+
+# (Optional) Google Cloud Storage for cloud backups
+# google-cloud-storage>=2.14.0
+
+# (Optional) AWS S3 for cloud backups
+# boto3>=1.34.0
+
+# ── Testing ─────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-timeout>=2.3.0
+pytest-mock>=3.14.0

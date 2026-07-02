@@ -1,0 +1,11 @@
+# aladdin_wakeword.tflite — Placeholder
+
+## Download Instructions
+Place your real TFLite wake-word model here:
+  app/src/main/assets/aladdin_wakeword.tflite
+
+Options:
+  1. Porcupine wake-word: https://github.com/Picovoice/porcupine
+  2. Custom TFLite model trained with transfer learning
+
+The WakeWordDetector will load this via AssetManager.

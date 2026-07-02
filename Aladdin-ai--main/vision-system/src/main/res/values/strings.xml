@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_label">Aladdin Vision (Screen Understanding)</string>
+    <string name="accessibility_service_description">Allows Aladdin to read the screen content to understand the current context and provide intelligent assistance.</string>
+    <string name="vision_module_name">Aladdin Vision System</string>
+</resources>

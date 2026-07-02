@@ -1,0 +1,28 @@
+{
+  "desktop": [
+    "chrome",
+    "google chrome",
+    "firefox",
+    "code",
+    "visual studio code",
+    "notepad",
+    "notepad++",
+    "explorer",
+    "terminal",
+    "cmd",
+    "powershell",
+    "calculator",
+    "word",
+    "excel",
+    "outlook",
+    "safari",
+    "finder",
+    "textedit",
+    "gedit",
+    "nautilus",
+    "xterm",
+    "gnome-terminal"
+  ],
+  "android": [],
+  "_note": "Add app names (lowercase) to allow launching them via the AI assistant"
+}

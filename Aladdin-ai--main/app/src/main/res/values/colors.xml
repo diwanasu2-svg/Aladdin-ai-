@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ─── Brand colors ──────────────────────────────────────────────────── -->
+    <color name="aladdin_primary">#FF7B8CFF</color>
+    <color name="aladdin_primary_dark">#FF3A4AE0</color>
+    <color name="aladdin_primary_container">#FF1E2970</color>
+    <color name="aladdin_secondary">#FF00D0C4</color>
+    <color name="aladdin_secondary_dark">#FF006B65</color>
+    <color name="aladdin_accent">#FFFFB86B</color>
+    <color name="aladdin_error">#FFFF6B6B</color>
+
+    <!-- ─── Launcher icon background ──────────────────────────────────────── -->
+    <color name="aladdin_background">#FF0F1117</color>
+
+    <!-- ─── Dark theme backgrounds ────────────────────────────────────────── -->
+    <color name="bg_dark">#FF0F1117</color>
+    <color name="surface_dark">#FF191C24</color>
+    <color name="surface_variant_dark">#FF1E2230</color>
+    <color name="on_surface_dark">#FFE2E4EF</color>
+    <color name="on_surface_variant_dark">#FFB0B4C8</color>
+
+    <!-- ─── Light theme backgrounds ──────────────────────────────────────── -->
+    <color name="bg_light">#FFFAFAFD</color>
+    <color name="surface_light">#FFFFFFFF</color>
+    <color name="surface_variant_light">#FFEEEFF8</color>
+    <color name="on_surface_light">#FF1A1B25</color>
+    <color name="on_surface_variant_light">#FF44475A</color>
+
+    <!-- ─── Chat bubble colors ────────────────────────────────────────────── -->
+    <color name="bubble_user">#FF3A4AE0</color>
+    <color name="bubble_user_text">#FFFFFFFF</color>
+    <color name="bubble_assistant">#FF1E2230</color>
+    <color name="bubble_assistant_text">#FFE2E4EF</color>
+    <color name="bubble_error">#FF690005</color>
+    <color name="bubble_error_text">#FFFFB4AB</color>
+
+    <!-- ─── Legacy / compat colors ────────────────────────────────────────── -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray_100">#FFF5F5F5</color>
+    <color name="gray_700">#FF616161</color>
+</resources>

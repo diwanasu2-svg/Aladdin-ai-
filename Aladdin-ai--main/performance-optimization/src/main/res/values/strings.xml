@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="perf_startup_target">Startup target: 3 seconds</string>
+    <string name="perf_ram_target">RAM target: 200 MB</string>
+    <string name="perf_cpu_target">CPU target: 10% average</string>
+    <string name="perf_benchmark_running">Running performance benchmarks…</string>
+    <string name="perf_benchmark_pass">All performance targets met</string>
+    <string name="perf_benchmark_fail">Performance targets missed — see report</string>
+</resources>
