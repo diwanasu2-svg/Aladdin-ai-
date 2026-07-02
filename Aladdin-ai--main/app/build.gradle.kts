@@ -126,21 +126,6 @@ android {
     }
 }
 
-// ─── AGP 8.x androidComponents API for APK renaming ──────────────────────────
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        variant.outputs.forEach { output ->
-            val versionName = variant.versionName.orElse("unknown").get()
-            val variantName = variant.name
-            output.outputFile.set(
-                project.layout.buildDirectory.file(
-                    "outputs/apk/$variantName/Aladdin-$variantName-v${versionName}.apk"
-                )
-            )
-        }
-    }
-}
-
 dependencies {
     // ─── Internal modules ─────────────────────────────────────────────────────
     implementation(project(":ai-engine"))
@@ -243,7 +228,7 @@ dependencies {
     // ─── Gemini AI ────────────────────────────────────────────────────────
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
-    // ─── Network ───────────────────────���──────────────────────────────────[...]
+    // ─── Network ───────────────────────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
@@ -255,7 +240,7 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
 
-    // ─── JavaMail ─────────────────────────────────────────────────────────[...]
+    // ─── JavaMail ────────────────────────────────────────────────────────
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
 
