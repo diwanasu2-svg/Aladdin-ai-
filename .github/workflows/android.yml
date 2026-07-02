@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable
-        run: chmod +x gradlew
+        run: chmod +x Aladdin-ai--main/gradlew
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
