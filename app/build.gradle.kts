@@ -126,22 +126,6 @@ android {
     }
 }
 
-// ─── AGP 8.x androidComponents API for APK renaming ──────────────────────────
-// Renames APK files to include variant name and version
-androidComponents {
-    onVariants { variant ->
-        val appVersion = variant.versionName
-        val variantName = variant.name
-        
-        // Configure all APK outputs for this variant
-        variant.outputs.all { output ->
-            // Get the build output directory
-            val apkName = "Aladdin-$variantName-v${appVersion}.apk"
-            output.outputFileName.set(apkName)
-        }
-    }
-}
-
 dependencies {
     // ─── Internal modules ─────────────────────────────────────────────────────
     implementation(project(":ai-engine"))
