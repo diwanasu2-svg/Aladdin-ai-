@@ -130,11 +130,11 @@ android {
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
-            val versionName = variant.versionName.orElse("unknown")
+            val versionName = variant.versionName.orElse("unknown").get()
             val variantName = variant.name
             output.outputFile.set(
                 project.layout.buildDirectory.file(
-                    "outputs/apk/$variantName/Aladdin-$variantName-v${versionName.get()}.apk"
+                    "outputs/apk/$variantName/Aladdin-$variantName-v${versionName}.apk"
                 )
             )
         }
@@ -228,7 +228,7 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // ─── ML Kit ──────────────────────────────────────────────────────────
+    // ─── ML Kit ─────────────────────────────────────────────────────────[...]
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
@@ -243,7 +243,7 @@ dependencies {
     // ─── Gemini AI ────────────────────────────────────────────────────────
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 
-    // ─── Network ─────────────────────────────────────────────────────────────
+    // ─── Network ───────────────────────���──────────────────────────────────[...]
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
@@ -255,14 +255,14 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
 
-    // ─── JavaMail ────────────────────────────────────────────────────────────
+    // ─── JavaMail ─────────────────────────────────────────────────────────[...]
     implementation("com.sun.mail:android-mail:1.6.7")
     implementation("com.sun.mail:android-activation:1.6.7")
 
     // ─── Image loading ──────────────────────────────────────────────────────
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // ─── TFLite ──────────────────────────────────────────────────────────────
+    // ─── TFLite ─────────────────────────────────────────────────────────[...]
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-api:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
