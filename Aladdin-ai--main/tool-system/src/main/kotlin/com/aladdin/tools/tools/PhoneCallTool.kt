@@ -17,7 +17,9 @@ import org.json.JSONObject
  * Place calls, get call logs, schedule calls via Android TelecomManager / Call Intent.
  */
 @Singleton
-class PhoneCallTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class PhoneCallTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "phone_call"
 
     override val name = "phone_call"
     override val description = "Place phone calls, read call logs, schedule and manage calls"
@@ -33,11 +35,11 @@ class PhoneCallTool @Inject constructor(@ApplicationContext private val context:
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("calling", number); put("status", "initiated")
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Call failed: ${e.message}")
+            ToolResult.error(id, "Call failed: ${e.message}")
         }
     }
 
@@ -49,9 +51,9 @@ class PhoneCallTool @Inject constructor(@ApplicationContext private val context:
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().put("dial_opened", number))
+            ToolResult.success(id, JSONObject().put("dial_opened", number).toString())
         } catch (e: Exception) {
-            ToolResult.error(e.message ?: "Dial failed")
+            ToolResult.error(id, e.message ?: "Dial failed")
         }
     }
 
@@ -91,11 +93,11 @@ class PhoneCallTool @Inject constructor(@ApplicationContext private val context:
                         })
                     }
                 }
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("calls", calls.map { it.toString() }); put("count", calls.size)
-                })
+                }.toString())
             } catch (e: Exception) {
-                ToolResult.error("Call log error: ${e.message}")
+                ToolResult.error(id, "Call log error: ${e.message}")
             }
         }
 
@@ -106,20 +108,20 @@ class PhoneCallTool @Inject constructor(@ApplicationContext private val context:
             put("note", note); put("status", "scheduled")
         }
         scheduledCalls.add(entry)
-        return ToolResult.success(entry)
+        return ToolResult.success(id, entry.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "call")) {
-            "call" -> makeCall(params.getString("number"))
-            "dial" -> dialNumber(params.getString("number"))
-            "log" -> getCallLog(params.optInt("limit", 20), params.optString("type", "all"))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "call")) {
+            "call" -> makeCall((params["number"] ?: return ToolResult.error(id, "Missing required parameter: " + "number")))
+            "dial" -> dialNumber((params["number"] ?: return ToolResult.error(id, "Missing required parameter: " + "number")))
+            "log" -> getCallLog((params["limit"]?.toIntOrNull() ?: 20), (params["type"] ?: "all"))
             "schedule" -> scheduleCall(
-                params.getString("number"),
-                params.getLong("at_timestamp"),
-                params.optString("note", "")
+                (params["number"] ?: return ToolResult.error(id, "Missing required parameter: " + "number")),
+                (params["at_timestamp"]?.toLongOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "at_timestamp")),
+                (params["note"] ?: "")
             )
-            else -> ToolResult.error("Unknown phone action: $action")
+            else -> ToolResult.error(id, "Unknown phone action: $action")
         }
     }
 }

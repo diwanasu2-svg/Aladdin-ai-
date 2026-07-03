@@ -20,7 +20,9 @@ import org.json.JSONObject
  * Send/receive messages, forward, share files, get chat info via Telegram Bot API.
  */
 @Singleton
-class TelegramTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class TelegramTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "telegram"
 
     override val name = "telegram"
     override val description = "Send/receive Telegram messages, forward messages, share media, manage chats"
@@ -47,14 +49,14 @@ class TelegramTool @Inject constructor(@ApplicationContext private val context: 
             val result = apiCall("sendMessage", payload)
             if (result.optBoolean("ok", false)) {
                 val msg = result.getJSONObject("result")
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("message_id", msg.getLong("message_id"))
                     put("chat_id", chatId); put("sent", true)
-                })
+                }.toString())
             } else {
-                ToolResult.error(result.optString("description", "Send failed"))
+                ToolResult.error(id, result.optString("description", "Send failed"))
             }
-        } catch (e: Exception) { ToolResult.error("Telegram send error: ${e.message}") }
+        } catch (e: Exception) { ToolResult.error(id, "Telegram send error: ${e.message}") }
     }
 
     suspend fun getUpdates(limit: Int = 10, offset: Int = 0): ToolResult {
@@ -74,11 +76,11 @@ class TelegramTool @Inject constructor(@ApplicationContext private val context: 
                         put("from", msg.optJSONObject("from")?.optString("username") ?: "")
                     }.toString())
                 }
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("messages", messages); put("count", messages.size)
-                })
-            } else { ToolResult.error("getUpdates failed") }
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Error") }
+                }.toString())
+            } else { ToolResult.error(id, "getUpdates failed") }
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Error") }
     }
 
     suspend fun forwardMessage(fromChatId: String, toChatId: String, messageId: Long): ToolResult {
@@ -88,8 +90,8 @@ class TelegramTool @Inject constructor(@ApplicationContext private val context: 
                 put("message_id", messageId)
             }
             val result = apiCall("forwardMessage", payload)
-            ToolResult.success(JSONObject().put("forwarded", result.optBoolean("ok", false)))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Forward failed") }
+            ToolResult.success(id, JSONObject().put("forwarded", result.optBoolean("ok", false)).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Forward failed") }
     }
 
     // Open Telegram chat via intent
@@ -100,19 +102,19 @@ class TelegramTool @Inject constructor(@ApplicationContext private val context: 
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().put("opened_chat", username))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Open chat failed") }
+            ToolResult.success(id, JSONObject().put("opened_chat", username).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Open chat failed") }
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "send")) {
-            "send" -> sendMessage(params.getString("chat_id"), params.getString("text"),
-                params.optString("parse_mode", ""))
-            "updates" -> getUpdates(params.optInt("limit", 10), params.optInt("offset", 0))
-            "forward" -> forwardMessage(params.getString("from_chat_id"),
-                params.getString("to_chat_id"), params.getLong("message_id"))
-            "open" -> openChat(params.getString("username"))
-            else -> ToolResult.error("Unknown Telegram action: $action")
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "send")) {
+            "send" -> sendMessage((params["chat_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "chat_id")), (params["text"] ?: return ToolResult.error(id, "Missing required parameter: " + "text")),
+                (params["parse_mode"] ?: ""))
+            "updates" -> getUpdates((params["limit"]?.toIntOrNull() ?: 10), (params["offset"]?.toIntOrNull() ?: 0))
+            "forward" -> forwardMessage((params["from_chat_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "from_chat_id")),
+                (params["to_chat_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "to_chat_id")), (params["message_id"]?.toLongOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "message_id")))
+            "open" -> openChat((params["username"] ?: return ToolResult.error(id, "Missing required parameter: " + "username")))
+            else -> ToolResult.error(id, "Unknown Telegram action: $action")
         }
     }
 }

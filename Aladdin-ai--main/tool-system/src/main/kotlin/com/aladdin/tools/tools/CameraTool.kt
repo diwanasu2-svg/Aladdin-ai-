@@ -24,7 +24,9 @@ import java.util.Locale
  * Uses Android Camera Intent and MediaStore for gallery access.
  */
 @Singleton
-class CameraTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class CameraTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "camera"
 
     override val name = "camera"
     override val description = "Capture photos, record video, scan QR codes, manage camera media"
@@ -50,11 +52,11 @@ class CameraTool @Inject constructor(@ApplicationContext private val context: Co
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
             targetActivity.startActivityForResult(intent, requestCode)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("camera_launched", true); put("output_path", file.absolutePath)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Camera launch failed: ${e.message}")
+            ToolResult.error(id, "Camera launch failed: ${e.message}")
         }
     }
 
@@ -69,12 +71,12 @@ class CameraTool @Inject constructor(@ApplicationContext private val context: Co
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
             targetActivity.startActivityForResult(intent, requestCode)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("video_launched", true); put("output_path", file.absolutePath)
                 put("max_duration_s", maxDurationS)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Video recorder launch failed: ${e.message}")
+            ToolResult.error(id, "Video recorder launch failed: ${e.message}")
         }
     }
 
@@ -85,10 +87,10 @@ class CameraTool @Inject constructor(@ApplicationContext private val context: Co
                 putExtra("SCAN_MODE", "QR_CODE_MODE")
             }
             targetActivity.startActivityForResult(intent, requestCode)
-            ToolResult.success(JSONObject().put("qr_scanner_launched", true))
+            ToolResult.success(id, JSONObject().put("qr_scanner_launched", true).toString())
         } catch (e: Exception) {
             // Fallback: open camera
-            ToolResult.error("QR scanner not available: ${e.message}. Install ZXing Barcode Scanner.")
+            ToolResult.error(id, "QR scanner not available: ${e.message}. Install ZXing Barcode Scanner.")
         }
     }
 
@@ -118,11 +120,11 @@ class CameraTool @Inject constructor(@ApplicationContext private val context: Co
                     })
                 }
             }
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("photos", photos.map { it.toString() }); put("count", photos.size)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("List photos error: ${e.message}")
+            ToolResult.error(id, "List photos error: ${e.message}")
         }
     }
 
@@ -130,19 +132,19 @@ class CameraTool @Inject constructor(@ApplicationContext private val context: Co
     fun toggleFlash(on: Boolean): ToolResult {
         return try {
             val cm = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
-            val cameraId = cm.cameraIdList.firstOrNull() ?: return ToolResult.error("No camera found")
+            val cameraId = cm.cameraIdList.firstOrNull() ?: return ToolResult.error(id, "No camera found")
             cm.setTorchMode(cameraId, on)
-            ToolResult.success(JSONObject().put("flash", if (on) "on" else "off"))
+            ToolResult.success(id, JSONObject().put("flash", if (on) "on" else "off").toString())
         } catch (e: Exception) {
-            ToolResult.error("Flash control error: ${e.message}")
+            ToolResult.error(id, "Flash control error: ${e.message}")
         }
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "list_photos")) {
-            "list_photos" -> listPhotos(params.optInt("limit", 20))
-            "toggle_flash" -> toggleFlash(params.getBoolean("on"))
-            else -> ToolResult.error("Camera actions requiring activity context must use launchCamera/launchVideoRecorder directly. Action: $action")
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "list_photos")) {
+            "list_photos" -> listPhotos((params["limit"]?.toIntOrNull() ?: 20))
+            "toggle_flash" -> toggleFlash((params["on"]?.toBoolean() ?: return ToolResult.error(id, "Missing required parameter: " + "on")))
+            else -> ToolResult.error(id, "Camera actions requiring activity context must use launchCamera/launchVideoRecorder directly. Action: $action")
         }
     }
 }

@@ -17,7 +17,9 @@ import org.json.JSONObject
  * Read, dismiss, reply to, filter, and prioritize notifications via Android NotificationListenerService.
  */
 @Singleton
-class NotificationControlTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class NotificationControlTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "notification_control"
 
     override val name = "notification_control"
     override val description = "Read, dismiss, reply to, filter and prioritize Android notifications"
@@ -32,8 +34,7 @@ class NotificationControlTool @Inject constructor(@ApplicationContext private va
     suspend fun getNotifications(appFilter: String? = null, limit: Int = 20): ToolResult =
         withContext(Dispatchers.IO) {
             try {
-                val notifs = activeNotifications ?: return@withContext ToolResult.error(
-                    "NotificationListenerService not connected — grant Notification Access permission")
+                val notifs = activeNotifications ?: return@withContext ToolResult.error(id, "NotificationListenerService not connected — grant Notification Access permission")
                 val result = notifs
                     .filter { sbn ->
                         appFilter == null || sbn.packageName.contains(appFilter, ignoreCase = true)
@@ -56,38 +57,38 @@ class NotificationControlTool @Inject constructor(@ApplicationContext private va
                             put("ongoing", sbn.isOngoing)
                         }
                     }
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("notifications", result.map { it.toString() })
                     put("count", result.size)
-                })
-            } catch (e: Exception) { ToolResult.error("Get notifications error: ${e.message}") }
+                }.toString())
+            } catch (e: Exception) { ToolResult.error(id, "Get notifications error: ${e.message}") }
         }
 
     // ── Dismiss a notification ─────────────────────────────────────────────
     fun dismissNotification(key: String): ToolResult {
         return try {
             val listener = notificationListenerService
-                ?: return ToolResult.error("NotificationListenerService not connected")
+                ?: return ToolResult.error(id, "NotificationListenerService not connected")
             if (key == "all") {
                 listener.cancelAllNotifications()
             } else {
                 listener.cancelNotification(key)
             }
-            ToolResult.success(JSONObject().put("dismissed", key))
-        } catch (e: Exception) { ToolResult.error("Dismiss error: ${e.message}") }
+            ToolResult.success(id, JSONObject().put("dismissed", key).toString())
+        } catch (e: Exception) { ToolResult.error(id, "Dismiss error: ${e.message}") }
     }
 
     // ── Reply to a notification inline ────────────────────────────────────
     fun replyToNotification(key: String, replyText: String): ToolResult {
         return try {
             val notifs = activeNotifications
-                ?: return ToolResult.error("NotificationListenerService not running")
+                ?: return ToolResult.error(id, "NotificationListenerService not running")
             val sbn = notifs.firstOrNull { it.key == key }
-                ?: return ToolResult.error("Notification not found: $key")
-            val actions = sbn.notification.actions ?: return ToolResult.error("No actions available")
+                ?: return ToolResult.error(id, "Notification not found: $key")
+            val actions = sbn.notification.actions ?: return ToolResult.error(id, "No actions available")
             val replyAction = actions.firstOrNull { action ->
                 action.remoteInputs != null && action.remoteInputs.isNotEmpty()
-            } ?: return ToolResult.error("No reply action available")
+            } ?: return ToolResult.error(id, "No reply action available")
 
             val remoteInput = android.app.RemoteInput.Builder(
                 replyAction.remoteInputs[0].resultKey
@@ -99,34 +100,34 @@ class NotificationControlTool @Inject constructor(@ApplicationContext private va
                 replyAction.remoteInputs, android.content.Intent(), bundle
             )
             replyAction.actionIntent.send(context, 0, intent)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("replied_to", key); put("text", replyText)
-            })
-        } catch (e: Exception) { ToolResult.error("Reply error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Reply error: ${e.message}") }
     }
 
     // ── Get notification summary grouped by app ───────────────────────────
     suspend fun getSummary(): ToolResult = withContext(Dispatchers.IO) {
-        val notifs = activeNotifications ?: return@withContext ToolResult.error("Service not connected")
+        val notifs = activeNotifications ?: return@withContext ToolResult.error(id, "Service not connected")
         val byApp = notifs.groupBy { it.packageName }
         val summary = byApp.mapValues { (_, v) -> v.size }
-        return@withContext ToolResult.success(JSONObject().apply {
+        return@withContext ToolResult.success(id, JSONObject().apply {
             put("total", notifs.size)
             put("by_app", JSONObject(summary as Map<*, *>))
             put("apps", summary.keys.toList().toString())
-        })
+        }.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "list")) {
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "list")) {
             "list" -> getNotifications(
-                params.optString("app", "").ifEmpty { null },
-                params.optInt("limit", 20)
+                (params["app"] ?: "").ifEmpty { null },
+                (params["limit"]?.toIntOrNull() ?: 20)
             )
-            "dismiss" -> dismissNotification(params.getString("key"))
-            "reply" -> replyToNotification(params.getString("key"), params.getString("reply"))
+            "dismiss" -> dismissNotification((params["key"] ?: return ToolResult.error(id, "Missing required parameter: " + "key")))
+            "reply" -> replyToNotification((params["key"] ?: return ToolResult.error(id, "Missing required parameter: " + "key")), (params["reply"] ?: return ToolResult.error(id, "Missing required parameter: " + "reply")))
             "summary" -> getSummary()
-            else -> ToolResult.error("Unknown notification action: $action")
+            else -> ToolResult.error(id, "Unknown notification action: $action")
         }
     }
 }

@@ -20,7 +20,9 @@ import org.json.JSONObject
  * Send messages, list servers/channels, fetch messages, react via Discord REST API.
  */
 @Singleton
-class DiscordTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class DiscordTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "discord"
 
     override val name = "discord"
     override val description = "Send Discord messages, manage channels, read notifications, upload files, react"
@@ -55,37 +57,37 @@ class DiscordTool @Inject constructor(@ApplicationContext private val context: C
                 replyToId?.let { put("message_reference", JSONObject().put("message_id", it)) }
             }
             val result = apiCall("POST", "/channels/$channelId/messages", payload)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("message_id", result.optString("id"))
                 put("channel_id", channelId); put("sent", true)
-            })
-        } catch (e: Exception) { ToolResult.error("Discord send error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Discord send error: ${e.message}") }
     }
 
     suspend fun getMessages(channelId: String, limit: Int = 20): ToolResult {
         return try {
             val result = apiCall("GET", "/channels/$channelId/messages?limit=${minOf(limit, 100)}")
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("raw", result.toString()); put("channel_id", channelId)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Error") }
     }
 
     suspend fun addReaction(channelId: String, messageId: String, emoji: String): ToolResult {
         return try {
             val encoded = java.net.URLEncoder.encode(emoji, "UTF-8")
             apiCall("PUT", "/channels/$channelId/messages/$messageId/reactions/$encoded/@me")
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("reacted", emoji); put("message_id", messageId)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Reaction error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Reaction error") }
     }
 
     suspend fun listServers(): ToolResult {
         return try {
             val result = apiCall("GET", "/users/@me/guilds")
-            ToolResult.success(JSONObject().put("servers", result.toString()))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Error") }
+            ToolResult.success(id, JSONObject().put("servers", result.toString()).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Error") }
     }
 
     fun openDiscord(): ToolResult {
@@ -94,20 +96,20 @@ class DiscordTool @Inject constructor(@ApplicationContext private val context: C
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().put("discord_opened", true))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Open failed") }
+            ToolResult.success(id, JSONObject().put("discord_opened", true).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Open failed") }
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "send")) {
-            "send" -> sendMessage(params.getString("channel_id"), params.getString("content"),
-                params.optString("reply_to", "").ifEmpty { null })
-            "messages" -> getMessages(params.getString("channel_id"), params.optInt("limit", 20))
-            "react" -> addReaction(params.getString("channel_id"),
-                params.getString("message_id"), params.getString("emoji"))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "send")) {
+            "send" -> sendMessage((params["channel_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "channel_id")), (params["content"] ?: return ToolResult.error(id, "Missing required parameter: " + "content")),
+                (params["reply_to"] ?: "").ifEmpty { null })
+            "messages" -> getMessages((params["channel_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "channel_id")), (params["limit"]?.toIntOrNull() ?: 20))
+            "react" -> addReaction((params["channel_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "channel_id")),
+                (params["message_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "message_id")), (params["emoji"] ?: return ToolResult.error(id, "Missing required parameter: " + "emoji")))
             "servers" -> listServers()
             "open" -> openDiscord()
-            else -> ToolResult.error("Unknown Discord action: $action")
+            else -> ToolResult.error(id, "Unknown Discord action: $action")
         }
     }
 }

@@ -16,7 +16,9 @@ import java.util.regex.Pattern
  * Track, search, pin, and auto-clear sensitive clipboard entries.
  */
 @Singleton
-class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "clipboard_history"
 
     override val name = "clipboard_history"
     override val description = "Clipboard history: track copies, search, pin, auto-clear sensitive data"
@@ -63,22 +65,22 @@ class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val c
         return try {
             clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
             val entry = addEntry(text)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("copied", true); put("id", entry.id)
                 put("length", text.length); put("is_sensitive", entry.isSensitive)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Copy error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Copy error") }
     }
 
     fun getCurrentClipboard(): ToolResult {
         return try {
             val clip = clipboard.primaryClip
             val text = clip?.getItemAt(0)?.coerceToText(context)?.toString() ?: ""
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("text", text); put("length", text.length)
                 put("is_sensitive", SENSITIVE_PATTERNS.any { it.matcher(text).find() })
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Get clipboard error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Get clipboard error") }
     }
 
     fun getHistory(limit: Int = 20, includeSensitive: Boolean = false): ToolResult {
@@ -91,17 +93,17 @@ class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val c
                 put("timestamp", entry.timestamp); put("is_sensitive", entry.isSensitive)
             }.toString()
         }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("history", items); put("count", items.size)
-        })
+        }.toString())
     }
 
     fun pinEntry(id: String, label: String = ""): ToolResult {
         val entry = history.firstOrNull { it.id == id }
-            ?: return ToolResult.error("Entry not found: $id")
+            ?: return ToolResult.error(id, "Entry not found: $id")
         entry.pinned = true
         if (label.isNotBlank()) entry.label = label
-        return ToolResult.success(JSONObject().apply { put("pinned", id); put("label", entry.label) })
+        return ToolResult.success(id, JSONObject().apply { put("pinned", id); put("label", entry.label) }.toString())
     }
 
     fun searchHistory(query: String, limit: Int = 10): ToolResult {
@@ -109,12 +111,12 @@ class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val c
         val results = history.filter {
             !it.isSensitive && (it.text.lowercase().contains(q) || it.label.lowercase().contains(q))
         }.takeLast(limit).reversed()
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("results", results.map { e ->
                 JSONObject().put("id", e.id).put("text", e.text.take(80)).put("pinned", e.pinned).toString()
             })
             put("count", results.size)
-        })
+        }.toString())
     }
 
     fun clearSensitive(): ToolResult {
@@ -126,20 +128,20 @@ class ClipboardHistoryTool @Inject constructor(@ApplicationContext private val c
         if (SENSITIVE_PATTERNS.any { it.matcher(clip).find() }) {
             clipboard.setPrimaryClip(ClipData.newPlainText("cleared", ""))
         }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("cleared_items", removed); put("remaining", history.size)
-        })
+        }.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "history")) {
-            "copy" -> copyToClipboard(params.getString("text"), params.optString("label", "aladdin"))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "history")) {
+            "copy" -> copyToClipboard((params["text"] ?: return ToolResult.error(id, "Missing required parameter: " + "text")), (params["label"] ?: "aladdin"))
             "get" -> getCurrentClipboard()
-            "history" -> getHistory(params.optInt("limit", 20), params.optBoolean("include_sensitive", false))
-            "pin" -> pinEntry(params.getString("id"), params.optString("label", ""))
-            "search" -> searchHistory(params.getString("query"), params.optInt("limit", 10))
+            "history" -> getHistory((params["limit"]?.toIntOrNull() ?: 20), (params["include_sensitive"]?.toBoolean() ?: false))
+            "pin" -> pinEntry((params["id"] ?: return ToolResult.error(id, "Missing required parameter: " + "id")), (params["label"] ?: ""))
+            "search" -> searchHistory((params["query"] ?: return ToolResult.error(id, "Missing required parameter: " + "query")), (params["limit"]?.toIntOrNull() ?: 10))
             "clear_sensitive" -> clearSensitive()
-            else -> ToolResult.error("Unknown clipboard action: $action")
+            else -> ToolResult.error(id, "Unknown clipboard action: $action")
         }
     }
 }

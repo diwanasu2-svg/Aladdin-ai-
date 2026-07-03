@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit
  * Control smart devices via Tuya Local API, Philips Hue, and Google Home / Alexa voice intents.
  */
 @Singleton
-class SmartHomeTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class SmartHomeTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "smart_home"
 
     override val name = "smart_home"
     override val description = "Control smart lights, plugs, thermostats, locks, cameras and create routines"
@@ -71,11 +73,11 @@ class SmartHomeTool @Inject constructor(@ApplicationContext private val context:
                 hue?.let { state.put("hue", it) }
                 saturation?.let { state.put("sat", it) }
                 val result = hueRequest("/lights/$lightId/state", "PUT", state)
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("light_id", lightId); put("state", state.toString()); put("result", result.toString())
-                })
+                }.toString())
             } catch (e: Exception) {
-                ToolResult.error("Light control error: ${e.message}")
+                ToolResult.error(id, "Light control error: ${e.message}")
             }
         }
 
@@ -83,10 +85,10 @@ class SmartHomeTool @Inject constructor(@ApplicationContext private val context:
     suspend fun listLights(): ToolResult = withContext(Dispatchers.IO) {
         try {
             val result = hueRequest("/lights")
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("lights", result.toString()); put("count", result.length())
-            })
-        } catch (e: Exception) { ToolResult.error("List lights error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "List lights error: ${e.message}") }
     }
 
     // ── Control smart plug (Tuya) ──────────────────────────────────────────
@@ -94,10 +96,10 @@ class SmartHomeTool @Inject constructor(@ApplicationContext private val context:
         return try {
             val payload = JSONObject().apply { put("on", on) }
             val result = tuyaRequest(deviceIp, "/control", payload)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("device_ip", deviceIp); put("on", on); put("result", result.toString())
-            })
-        } catch (e: Exception) { ToolResult.error("Plug control error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Plug control error: ${e.message}") }
     }
 
     // ── Create routine ─────────────────────────────────────────────────────
@@ -107,9 +109,9 @@ class SmartHomeTool @Inject constructor(@ApplicationContext private val context:
             put("actions", actions.map { it.toString() })
             put("created_at", System.currentTimeMillis()); put("enabled", true)
         }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("routine", name); put("trigger", trigger); put("actions", actions.size)
-        })
+        }.toString())
     }
 
     // ── Voice command passthrough (Google Home / Alexa) ───────────────────
@@ -117,37 +119,37 @@ class SmartHomeTool @Inject constructor(@ApplicationContext private val context:
         val pkg = when (assistant.lowercase()) {
             "google" -> "com.google.android.googlequicksearchbox"
             "alexa" -> "com.amazon.dee.app"
-            else -> return ToolResult.error("Unknown assistant: $assistant")
+            else -> return ToolResult.error(id, "Unknown assistant: $assistant")
         }
         val intent = Intent(Intent.ACTION_VOICE_COMMAND).apply {
             setPackage(pkg); addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("assistant", assistant); put("command", command); put("launched", true)
-        })
+        }.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "list_lights")) {
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "list_lights")) {
             "list_lights" -> listLights()
             "control_light" -> controlLight(
-                params.getString("light_id"),
-                on = if (params.has("on")) params.getBoolean("on") else null,
-                brightness = if (params.has("brightness")) params.getInt("brightness") else null,
-                hue = if (params.has("hue")) params.getInt("hue") else null,
-                saturation = if (params.has("saturation")) params.getInt("saturation") else null
+                (params["light_id"] ?: return ToolResult.error(id, "Missing required parameter: " + "light_id")),
+                on = if (params.containsKey("on")) (params["on"]?.toBoolean() ?: return ToolResult.error(id, "Missing required parameter: " + "on")) else null,
+                brightness = if (params.containsKey("brightness")) (params["brightness"]?.toIntOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "brightness")) else null,
+                hue = if (params.containsKey("hue")) (params["hue"]?.toIntOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "hue")) else null,
+                saturation = if (params.containsKey("saturation")) (params["saturation"]?.toIntOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "saturation")) else null
             )
-            "control_plug" -> controlPlug(params.getString("device_ip"), params.getBoolean("on"))
+            "control_plug" -> controlPlug((params["device_ip"] ?: return ToolResult.error(id, "Missing required parameter: " + "device_ip")), (params["on"]?.toBoolean() ?: return ToolResult.error(id, "Missing required parameter: " + "on")))
             "create_routine" -> {
-                val actionsArr = params.getJSONArray("actions")
+                val actionsArr = org.json.JSONArray(params["actions"] ?: "[]")
                 val actions = (0 until actionsArr.length()).map { JSONObject(actionsArr.getString(it)) }
-                createRoutine(params.getString("name"), params.getString("trigger"), actions)
+                createRoutine((params["name"] ?: return ToolResult.error(id, "Missing required parameter: " + "name")), (params["trigger"] ?: return ToolResult.error(id, "Missing required parameter: " + "trigger")), actions)
             }
             "voice_command" -> sendVoiceCommand(
-                params.optString("assistant", "google"), params.getString("command")
+                (params["assistant"] ?: "google"), (params["command"] ?: return ToolResult.error(id, "Missing required parameter: " + "command"))
             )
-            else -> ToolResult.error("Unknown smart_home action: $action")
+            else -> ToolResult.error(id, "Unknown smart_home action: $action")
         }
     }
 }

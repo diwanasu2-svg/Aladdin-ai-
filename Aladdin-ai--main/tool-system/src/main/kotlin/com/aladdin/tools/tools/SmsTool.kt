@@ -17,7 +17,9 @@ import java.util.regex.Pattern
  * Send SMS, read inbox, search messages, extract OTPs, detect spam via Android SmsManager + ContentResolver.
  */
 @Singleton
-class SmsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class SmsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "sms"
 
     override val name = "sms"
     override val description = "Send, read, search SMS messages; OTP extraction and spam detection"
@@ -37,12 +39,12 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
             } else {
                 smsManager.sendTextMessage(to, null, body, null, null)
             }
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("sent", true); put("to", to)
                 put("length", body.length); put("parts", parts.size)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("SMS send failed: ${e.message}")
+            ToolResult.error(id, "SMS send failed: ${e.message}")
         }
     }
 
@@ -72,11 +74,11 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
                         })
                     }
                 }
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("messages", messages.map { it.toString() }); put("count", messages.size)
-                })
+                }.toString())
             } catch (e: Exception) {
-                ToolResult.error("Read SMS error: ${e.message}")
+                ToolResult.error(id, "Read SMS error: ${e.message}")
             }
         }
 
@@ -96,11 +98,11 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
                     })
                 }
             }
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("results", results.map { it.toString() }); put("count", results.size)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Search SMS error: ${e.message}")
+            ToolResult.error(id, "Search SMS error: ${e.message}")
         }
     }
 
@@ -108,7 +110,7 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
     suspend fun extractOtp(fromNumber: String? = null): ToolResult = withContext(Dispatchers.IO) {
         val result = readInbox(10, fromNumber)
         if (!result.success) return@withContext result
-        val data = result.data ?: return@withContext ToolResult.error("No data")
+        val data = result.data ?: return@withContext ToolResult.error(id, "No data")
         val messages = (data as JSONObject).getJSONArray("messages")
         val otps = mutableListOf<JSONObject>()
         for (i in 0 until messages.length()) {
@@ -122,9 +124,9 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
                 })
             }
         }
-        ToolResult.success(JSONObject().apply {
+        ToolResult.success(id, JSONObject().apply {
             put("otps", otps.map { it.toString() }); put("count", otps.size)
-        })
+        }.toString())
     }
 
     private fun isSpam(body: String): Boolean {
@@ -132,13 +134,13 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
         return SPAM_KEYWORDS.any { lower.contains(it) }
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "read")) {
-            "send" -> sendSms(params.getString("to"), params.getString("body"))
-            "read" -> readInbox(params.optInt("limit", 20), params.optString("from", "").ifEmpty { null })
-            "search" -> searchSms(params.getString("query"), params.optInt("limit", 20))
-            "otp" -> extractOtp(params.optString("from", "").ifEmpty { null })
-            else -> ToolResult.error("Unknown SMS action: $action")
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "read")) {
+            "send" -> sendSms((params["to"] ?: return ToolResult.error(id, "Missing required parameter: " + "to")), (params["body"] ?: return ToolResult.error(id, "Missing required parameter: " + "body")))
+            "read" -> readInbox((params["limit"]?.toIntOrNull() ?: 20), (params["from"] ?: "").ifEmpty { null })
+            "search" -> searchSms((params["query"] ?: return ToolResult.error(id, "Missing required parameter: " + "query")), (params["limit"]?.toIntOrNull() ?: 20))
+            "otp" -> extractOtp((params["from"] ?: "").ifEmpty { null })
+            else -> ToolResult.error(id, "Unknown SMS action: $action")
         }
     }
 }

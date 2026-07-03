@@ -14,7 +14,9 @@ import org.json.JSONObject
  * Send messages and media via WhatsApp Android intent. For full API access configure Twilio WhatsApp.
  */
 @Singleton
-class WhatsAppTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class WhatsAppTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "whatsapp"
 
     override val name = "whatsapp"
     override val description = "Send WhatsApp messages and media, search chats, generate reply suggestions"
@@ -28,12 +30,12 @@ class WhatsAppTool @Inject constructor(@ApplicationContext private val context: 
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("sent_via", "whatsapp_intent"); put("to", number)
                 put("message_preview", message.take(80))
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("WhatsApp not installed or error: ${e.message}")
+            ToolResult.error(id, "WhatsApp not installed or error: ${e.message}")
         }
     }
 
@@ -47,11 +49,11 @@ class WhatsAppTool @Inject constructor(@ApplicationContext private val context: 
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startActivity(intent)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("media_shared", true); put("mime_type", mimeType)
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Media share error: ${e.message}")
+            ToolResult.error(id, "Media share error: ${e.message}")
         }
     }
 
@@ -68,19 +70,19 @@ class WhatsAppTool @Inject constructor(@ApplicationContext private val context: 
                 listOf("Great!", "Perfect!", "Sounds good!")
             else -> listOf("Got it!", "Understood, thanks.", "I'll look into it.")
         }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("suggestions", suggestions.toString())
             put("original", incomingMessage)
             put("tone", tone)
-        })
+        }.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "send")) {
-            "send" -> sendMessage(params.getString("to"), params.getString("message"))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "send")) {
+            "send" -> sendMessage((params["to"] ?: return ToolResult.error(id, "Missing required parameter: " + "to")), (params["message"] ?: return ToolResult.error(id, "Missing required parameter: " + "message")))
             "reply_suggestion" -> generateReplySuggestion(
-                params.getString("message"), params.optString("tone", "friendly"))
-            else -> ToolResult.error("Unknown WhatsApp action: $action")
+                (params["message"] ?: return ToolResult.error(id, "Missing required parameter: " + "message")), (params["tone"] ?: "friendly"))
+            else -> ToolResult.error(id, "Unknown WhatsApp action: $action")
         }
     }
 }

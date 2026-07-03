@@ -18,7 +18,9 @@ import javax.inject.Singleton
  * Requires READ_CONTACTS permission.
  */
 @Singleton
-class ContactsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class ContactsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "contacts"
 
     companion object {
         private const val TAG = "ContactsTool"
@@ -27,27 +29,27 @@ class ContactsTool @Inject constructor(@ApplicationContext private val context: 
     override val name: String = "contacts"
     override val description: String = "Look up, search, and manage contacts from the phone's address book"
 
-    override suspend fun execute(params: Map<String, Any>): ToolResult {
+    override suspend fun execute(params: Map<String, String>): ToolResult {
         return try {
             when (val action = params["action"] as? String ?: "search") {
                 "search"  -> searchContacts(params["query"] as? String ?: "")
                 "lookup"  -> lookupContact(params["name"] as? String ?: "")
                 "phone"   -> getPhoneNumber(params["name"] as? String ?: "")
                 "email"   -> getEmail(params["name"] as? String ?: "")
-                "list"    -> listContacts(params["limit"] as? Int ?: 10)
-                else      -> ToolResult.Error("Unknown contacts action: $action")
+                "list"    -> listContacts(params["limit"]?.toIntOrNull() ?: 10)
+                else      -> ToolResult.error(id, "Unknown contacts action: $action")
             }
         } catch (e: SecurityException) {
             Log.e(TAG, "READ_CONTACTS permission denied: ${e.message}")
-            ToolResult.Error("Contacts permission not granted. Please allow contacts access.")
+            ToolResult.error(id, "Contacts permission not granted. Please allow contacts access.")
         } catch (e: Exception) {
             Log.e(TAG, "ContactsTool error: ${e.message}", e)
-            ToolResult.Error("Contacts lookup failed: ${e.message}")
+            ToolResult.error(id, "Contacts lookup failed: ${e.message}")
         }
     }
 
     private fun searchContacts(query: String): ToolResult {
-        if (query.isBlank()) return ToolResult.Error("Search query is required")
+        if (query.isBlank()) return ToolResult.error(id, "Search query is required")
 
         val resolver: ContentResolver = context.contentResolver
         val uri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI
@@ -73,9 +75,9 @@ class ContactsTool @Inject constructor(@ApplicationContext private val context: 
 
         Log.d(TAG, "Contact search '$query': ${results.length()} results")
         return if (results.length() > 0) {
-            ToolResult.Success(results.toString())
+            ToolResult.success(id, results.toString())
         } else {
-            ToolResult.Success("No contacts found matching '$query'")
+            ToolResult.success(id, "No contacts found matching '$query'")
         }
     }
 
@@ -96,11 +98,11 @@ class ContactsTool @Inject constructor(@ApplicationContext private val context: 
                 if (cursor.moveToFirst()) {
                     val displayName = cursor.getString(0)
                     val phone = cursor.getString(1)
-                    return ToolResult.Success("$displayName: $phone")
+                    return ToolResult.success(id, "$displayName: $phone")
                 }
             }
 
-        return ToolResult.Success("No phone number found for '$name'")
+        return ToolResult.success(id, "No phone number found for '$name'")
     }
 
     private fun getEmail(name: String): ToolResult {
@@ -118,11 +120,11 @@ class ContactsTool @Inject constructor(@ApplicationContext private val context: 
                 if (cursor.moveToFirst()) {
                     val displayName = cursor.getString(0)
                     val email = cursor.getString(1)
-                    return ToolResult.Success("$displayName: $email")
+                    return ToolResult.success(id, "$displayName: $email")
                 }
             }
 
-        return ToolResult.Success("No email found for '$name'")
+        return ToolResult.success(id, "No email found for '$name'")
     }
 
     private fun listContacts(limit: Int): ToolResult {
@@ -145,7 +147,7 @@ class ContactsTool @Inject constructor(@ApplicationContext private val context: 
                 }
             }
 
-        return ToolResult.Success("Contacts (first $limit): $results")
+        return ToolResult.success(id, "Contacts (first $limit): $results")
     }
 
     private fun phoneTypeLabel(type: Int): String = when (type) {

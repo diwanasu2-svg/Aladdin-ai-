@@ -21,7 +21,9 @@ import javax.inject.Singleton
  * the accessibility service in System Settings.
  */
 @Singleton
-class AccessibilityAutomationTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class AccessibilityAutomationTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "accessibility_automation"
 
     companion object {
         private const val TAG = "AccessibilityAutomation"
@@ -34,7 +36,7 @@ class AccessibilityAutomationTool @Inject constructor(@ApplicationContext privat
         context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
     }
 
-    override suspend fun execute(params: Map<String, Any>): ToolResult {
+    override suspend fun execute(params: Map<String, String>): ToolResult {
         return try {
             when (val action = params["action"] as? String ?: "status") {
                 "status"        -> checkAccessibilityStatus()
@@ -47,11 +49,11 @@ class AccessibilityAutomationTool @Inject constructor(@ApplicationContext privat
                 "home"          -> performGlobalAction("home")
                 "recents"       -> performGlobalAction("recents")
                 "notifications" -> performGlobalAction("notifications")
-                else            -> ToolResult.Error("Unknown accessibility action: $action")
+                else            -> ToolResult.error(id, "Unknown accessibility action: $action")
             }
         } catch (e: Exception) {
             Log.e(TAG, "AccessibilityAutomationTool error: ${e.message}", e)
-            ToolResult.Error("Accessibility automation failed: ${e.message}")
+            ToolResult.error(id, "Accessibility automation failed: ${e.message}")
         }
     }
 
@@ -62,16 +64,14 @@ class AccessibilityAutomationTool @Inject constructor(@ApplicationContext privat
         )
         val serviceNames = enabledServices.map { it.resolveInfo.serviceInfo.name }
 
-        return ToolResult.Success(
-            """
+        return ToolResult.success(id, """
             Accessibility Status:
             - Service enabled: $isEnabled
             - Enabled services: ${serviceNames.joinToString(", ").ifBlank { "none" }}
             - TouchExploration: ${accessibilityManager.isTouchExplorationEnabled}
             
             ${if (!isEnabled) "To enable: go to Settings > Accessibility > Aladdin Accessibility Service" else ""}
-            """.trimIndent()
-        )
+            """.trimIndent())
     }
 
     private fun openAccessibilitySettings(): ToolResult {
@@ -80,46 +80,38 @@ class AccessibilityAutomationTool @Inject constructor(@ApplicationContext privat
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
-            ToolResult.Success("Opened Accessibility Settings. Enable 'Aladdin Accessibility Service'.")
+            ToolResult.success(id, "Opened Accessibility Settings. Enable 'Aladdin Accessibility Service'.")
         } catch (e: Exception) {
-            ToolResult.Error("Could not open Accessibility Settings: ${e.message}")
+            ToolResult.error(id, "Could not open Accessibility Settings: ${e.message}")
         }
     }
 
     private fun clickElement(description: String): ToolResult {
-        if (description.isBlank()) return ToolResult.Error("Element description required")
+        if (description.isBlank()) return ToolResult.error(id, "Element description required")
 
         // In a real implementation, this would communicate with AladdinAccessibilityService
         // via a bound service or broadcast. The service holds the active window reference.
         Log.d(TAG, "Click request for element: '$description'")
-        return ToolResult.Success(
-            "Click request sent for '$description'. " +
-            "Note: Requires AladdinAccessibilityService to be active and bound."
-        )
+        return ToolResult.success(id, "Click request sent for '$description'. " +
+            "Note: Requires AladdinAccessibilityService to be active and bound.")
     }
 
     private fun readScreenContent(): ToolResult {
         Log.d(TAG, "Read screen content request")
-        return ToolResult.Success(
-            "Screen content reading requires AladdinAccessibilityService to be active. " +
-            "Use action='enable' to open settings and enable the service."
-        )
+        return ToolResult.success(id, "Screen content reading requires AladdinAccessibilityService to be active. " +
+            "Use action='enable' to open settings and enable the service.")
     }
 
     private fun performGlobalScroll(down: Boolean): ToolResult {
         Log.d(TAG, "Global scroll ${if (down) "down" else "up"} request")
-        return ToolResult.Success(
-            "Scroll ${if (down) "down" else "up"} request sent. " +
-            "Requires AladdinAccessibilityService to be active."
-        )
+        return ToolResult.success(id, "Scroll ${if (down) "down" else "up"} request sent. " +
+            "Requires AladdinAccessibilityService to be active.")
     }
 
     private fun performGlobalAction(action: String): ToolResult {
         Log.d(TAG, "Global action: $action")
-        return ToolResult.Success(
-            "Global action '$action' request sent. " +
-            "Requires AladdinAccessibilityService to be active."
-        )
+        return ToolResult.success(id, "Global action '$action' request sent. " +
+            "Requires AladdinAccessibilityService to be active.")
     }
 
     private fun isAccessibilityServiceEnabled(): Boolean {

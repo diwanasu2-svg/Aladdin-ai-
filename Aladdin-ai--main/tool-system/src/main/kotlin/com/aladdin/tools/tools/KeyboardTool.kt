@@ -22,7 +22,9 @@ import java.lang.reflect.Method
  * Type text, press shortcuts, function keys, special keys via Android AccessibilityService + ClipboardManager.
  */
 @Singleton
-class KeyboardTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class KeyboardTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "keyboard"
 
     override val name = "keyboard"
     override val description = "Type text, press keyboard shortcuts, function keys, and special key combinations"
@@ -48,18 +50,18 @@ class KeyboardTool @Inject constructor(@ApplicationContext private val context: 
                     putString(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
                 }
                 node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("typed", true); put("length", text.length); put("method", "accessibility")
-                })
+                }.toString())
             } else {
                 // Fallback: put in clipboard, press Ctrl+V
                 clipboard.setPrimaryClip(ClipData.newPlainText("aladdin_type", text))
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("typed", false); put("clipboard_set", true)
                     put("note", "No focused editable field — text is in clipboard, press Ctrl+V to paste")
-                })
+                }.toString())
             }
-        } catch (e: Exception) { ToolResult.error("Type text error: ${e.message}") }
+        } catch (e: Exception) { ToolResult.error(id, "Type text error: ${e.message}") }
     }
 
     // ── Paste clipboard into focused field ────────────────────────────────
@@ -67,9 +69,9 @@ class KeyboardTool @Inject constructor(@ApplicationContext private val context: 
         try {
             val node = getFocusedEditableNode()
             node?.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-                ?: return@withContext ToolResult.error("No focused field to paste into")
-            ToolResult.success(JSONObject().put("pasted", true))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Paste error") }
+                ?: return@withContext ToolResult.error(id, "No focused field to paste into")
+            ToolResult.success(id, JSONObject().put("pasted", true).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Paste error") }
     }
 
     // ── Clear focused text field ──────────────────────────────────────────
@@ -81,16 +83,16 @@ class KeyboardTool @Inject constructor(@ApplicationContext private val context: 
                     putString(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "")
                 }
                 node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
-                ToolResult.success(JSONObject().put("cleared", true))
-            } else ToolResult.error("No focused editable field")
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Clear error") }
+                ToolResult.success(id, JSONObject().put("cleared", true).toString())
+            } else ToolResult.error(id, "No focused editable field")
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Clear error") }
     }
 
     // ── Press a keyboard shortcut ─────────────────────────────────────────
     suspend fun pressShortcut(shortcut: String): ToolResult = withContext(Dispatchers.IO) {
         try {
             val svc = accessibilityService
-                ?: return@withContext ToolResult.error("AccessibilityService not running")
+                ?: return@withContext ToolResult.error(id, "AccessibilityService not running")
 
             val parts = shortcut.lowercase().split("+")
             val metaState = parts.dropLast(1).fold(0) { acc, part ->
@@ -105,27 +107,27 @@ class KeyboardTool @Inject constructor(@ApplicationContext private val context: 
             val keyPart = parts.last().trim()
             val keyCode = keyNameToCode(keyPart)
             if (keyCode == KeyEvent.KEYCODE_UNKNOWN) {
-                return@withContext ToolResult.error("Unknown key: $keyPart")
+                return@withContext ToolResult.error(id, "Unknown key: $keyPart")
             }
             val downEvent = KeyEvent(0, 0, KeyEvent.ACTION_DOWN, keyCode, 0, metaState)
             val upEvent = KeyEvent(0, 0, KeyEvent.ACTION_UP, keyCode, 0, metaState)
             svc.performGlobalAction(downEvent.keyCode) // simplified
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("shortcut", shortcut); put("key_code", keyCode); put("meta", metaState)
-            })
-        } catch (e: Exception) { ToolResult.error("Shortcut error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Shortcut error: ${e.message}") }
     }
 
     // ── Press a single key ────────────────────────────────────────────────
     suspend fun pressKey(key: String): ToolResult = withContext(Dispatchers.IO) {
         try {
             val svc = accessibilityService
-                ?: return@withContext ToolResult.error("AccessibilityService not running")
+                ?: return@withContext ToolResult.error(id, "AccessibilityService not running")
             val keyCode = keyNameToCode(key.lowercase())
-            if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return@withContext ToolResult.error("Unknown key: $key")
+            if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return@withContext ToolResult.error(id, "Unknown key: $key")
             svc.performGlobalAction(keyCode)
-            ToolResult.success(JSONObject().apply { put("key", key); put("key_code", keyCode) })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Press key error") }
+            ToolResult.success(id, JSONObject().apply { put("key", key); put("key_code", keyCode) }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Press key error") }
     }
 
     private fun getFocusedEditableNode(): AccessibilityNodeInfo? {
@@ -170,14 +172,14 @@ class KeyboardTool @Inject constructor(@ApplicationContext private val context: 
         else -> KeyEvent.KEYCODE_UNKNOWN
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "type")) {
-            "type" -> typeText(params.getString("text"), params.optLong("delay_ms", 0))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "type")) {
+            "type" -> typeText((params["text"] ?: return ToolResult.error(id, "Missing required parameter: " + "text")), (params["delay_ms"]?.toLongOrNull() ?: 0))
             "paste" -> pasteText()
             "clear" -> clearField()
-            "shortcut" -> pressShortcut(params.getString("shortcut"))
-            "key" -> pressKey(params.getString("key"))
-            else -> ToolResult.error("Unknown keyboard action: $action")
+            "shortcut" -> pressShortcut((params["shortcut"] ?: return ToolResult.error(id, "Missing required parameter: " + "shortcut")))
+            "key" -> pressKey((params["key"] ?: return ToolResult.error(id, "Missing required parameter: " + "key")))
+            else -> ToolResult.error(id, "Unknown keyboard action: $action")
         }
     }
 }

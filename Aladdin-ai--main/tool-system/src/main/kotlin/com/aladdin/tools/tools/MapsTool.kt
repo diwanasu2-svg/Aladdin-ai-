@@ -20,7 +20,9 @@ import java.util.Locale
  * Location, directions, search, navigation, favorites via Android LocationManager + Google Maps Intent.
  */
 @Singleton
-class MapsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class MapsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "maps"
 
     override val name = "maps"
     override val description = "Location, directions, nearby search, navigation, and saved places"
@@ -39,20 +41,20 @@ class MapsTool @Inject constructor(@ApplicationContext private val context: Cont
                 val loc = lm.getLastKnownLocation(provider) ?: continue
                 if (best == null || loc.accuracy < best.accuracy) best = loc
             }
-            if (best == null) return@withContext ToolResult.error("Location unavailable — check permissions")
+            if (best == null) return@withContext ToolResult.error(id, "Location unavailable — check permissions")
             val geocoder = Geocoder(context, Locale.getDefault())
             val addresses = geocoder.getFromLocation(best.latitude, best.longitude, 1)
             val address = addresses?.firstOrNull()
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("lat", best.latitude)
                 put("lng", best.longitude)
                 put("accuracy_m", best.accuracy)
                 put("address", address?.getAddressLine(0) ?: "")
                 put("city", address?.locality ?: "")
                 put("country", address?.countryName ?: "")
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Location error: ${e.message}")
+            ToolResult.error(id, "Location error: ${e.message}")
         }
     }
 
@@ -84,17 +86,17 @@ class MapsTool @Inject constructor(@ApplicationContext private val context: Cont
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
             val results = geocoder.getFromLocationName(address, 3)
-            if (results.isNullOrEmpty()) return@withContext ToolResult.error("Address not found")
+            if (results.isNullOrEmpty()) return@withContext ToolResult.error(id, "Address not found")
             val first = results[0]
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("address", first.getAddressLine(0) ?: address)
                 put("lat", first.latitude)
                 put("lng", first.longitude)
                 put("city", first.locality ?: "")
                 put("country", first.countryName ?: "")
-            })
+            }.toString())
         } catch (e: Exception) {
-            ToolResult.error("Geocoding error: ${e.message}")
+            ToolResult.error(id, "Geocoding error: ${e.message}")
         }
     }
 
@@ -104,36 +106,36 @@ class MapsTool @Inject constructor(@ApplicationContext private val context: Cont
             put("label", label); put("address", address)
             put("notes", notes); put("saved_at", System.currentTimeMillis())
         }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("saved", label); put("address", address)
-        })
+        }.toString())
     }
 
     fun listFavoritePlaces(): ToolResult {
         val places = savedPlaces.values.map { it.toString() }
-        return ToolResult.success(JSONObject().apply {
+        return ToolResult.success(id, JSONObject().apply {
             put("places", places); put("count", places.size)
-        })
+        }.toString())
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "location")) {
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "location")) {
             "location" -> getCurrentLocation()
             "navigate" -> {
-                openNavigation(params.getString("destination"), params.optString("mode", "d"))
-                ToolResult.success(JSONObject().put("navigation_started", true))
+                openNavigation((params["destination"] ?: return ToolResult.error(id, "Missing required parameter: " + "destination")), (params["mode"] ?: "d"))
+                ToolResult.success(id, JSONObject().put("navigation_started", true).toString())
             }
             "search" -> {
-                searchNearby(params.getString("query"),
-                    if (params.has("lat")) params.getDouble("lat") else null,
-                    if (params.has("lng")) params.getDouble("lng") else null)
-                ToolResult.success(JSONObject().put("search_opened", true))
+                searchNearby((params["query"] ?: return ToolResult.error(id, "Missing required parameter: " + "query")),
+                    if (params.containsKey("lat")) (params["lat"]?.toDoubleOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "lat")) else null,
+                    if (params.containsKey("lng")) (params["lng"]?.toDoubleOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "lng")) else null)
+                ToolResult.success(id, JSONObject().put("search_opened", true).toString())
             }
-            "geocode" -> geocodeAddress(params.getString("address"))
+            "geocode" -> geocodeAddress((params["address"] ?: return ToolResult.error(id, "Missing required parameter: " + "address")))
             "save_place" -> saveFavoritePlace(
-                params.getString("label"), params.getString("address"), params.optString("notes", ""))
+                (params["label"] ?: return ToolResult.error(id, "Missing required parameter: " + "label")), (params["address"] ?: return ToolResult.error(id, "Missing required parameter: " + "address")), (params["notes"] ?: ""))
             "list_places" -> listFavoritePlaces()
-            else -> ToolResult.error("Unknown maps action: $action")
+            else -> ToolResult.error(id, "Unknown maps action: $action")
         }
     }
 }

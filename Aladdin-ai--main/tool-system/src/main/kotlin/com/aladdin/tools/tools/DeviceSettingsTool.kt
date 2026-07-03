@@ -20,7 +20,9 @@ import org.json.JSONObject
  * Control Wi-Fi, Bluetooth, volume, brightness, DND, battery saver, flashlight, rotation, airplane mode.
  */
 @Singleton
-class DeviceSettingsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool() {
+class DeviceSettingsTool @Inject constructor(@ApplicationContext private val context: Context) : BaseTool {
+
+    override val id = "device_settings"
 
     override val name = "device_settings"
     override val description = "Control Wi-Fi, Bluetooth, volume, brightness, DND, battery saver, flashlight, rotation"
@@ -42,10 +44,10 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
             val maxVol = audioManager.getStreamMaxVolume(streamType)
             val targetVol = (level.coerceIn(0, 15) * maxVol / 15)
             audioManager.setStreamVolume(streamType, targetVol, 0)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("stream", stream); put("level", level); put("max", maxVol)
-            })
-        } catch (e: Exception) { ToolResult.error("Set volume error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Set volume error: ${e.message}") }
     }
 
     fun getVolume(stream: String = "media"): ToolResult {
@@ -58,11 +60,11 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
         return try {
             val cur = audioManager.getStreamVolume(streamType)
             val max = audioManager.getStreamMaxVolume(streamType)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("stream", stream); put("current", cur); put("max", max)
                 put("percent", if (max > 0) cur * 100 / max else 0)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Get volume error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Get volume error") }
     }
 
     // ── Brightness ─────────────────────────────────────────────────────────
@@ -79,10 +81,10 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
                 Settings.System.putInt(context.contentResolver,
                     Settings.System.SCREEN_BRIGHTNESS, level.coerceIn(0, 255))
             }
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("brightness", level); put("adaptive", adaptive)
-            })
-        } catch (e: Exception) { ToolResult.error("Set brightness error: ${e.message}") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, "Set brightness error: ${e.message}") }
     }
 
     // ── Do Not Disturb ─────────────────────────────────────────────────────
@@ -95,18 +97,18 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
                     if (enabled) android.app.NotificationManager.INTERRUPTION_FILTER_NONE
                     else android.app.NotificationManager.INTERRUPTION_FILTER_ALL
                 )
-                ToolResult.success(JSONObject().put("dnd_enabled", enabled))
+                ToolResult.success(id, JSONObject().put("dnd_enabled", enabled).toString())
             } else {
                 // Open DND settings
                 val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
-                ToolResult.success(JSONObject().apply {
+                ToolResult.success(id, JSONObject().apply {
                     put("dnd_enabled", null)
                     put("note", "DND permission required — settings opened")
-                })
+                }.toString())
             }
-        } catch (e: Exception) { ToolResult.error(e.message ?: "DND error") }
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "DND error") }
     }
 
     // ── Battery info ───────────────────────────────────────────────────────
@@ -117,11 +119,11 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
             val status = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_STATUS)
             val charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
                            status == BatteryManager.BATTERY_STATUS_FULL
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("level_percent", level); put("charging", charging)
                 put("status_code", status)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Battery error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Battery error") }
     }
 
     // ── Rotation lock ──────────────────────────────────────────────────────
@@ -129,22 +131,22 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
         return try {
             Settings.System.putInt(context.contentResolver,
                 Settings.System.ACCELEROMETER_ROTATION, if (locked) 0 else 1)
-            ToolResult.success(JSONObject().put("rotation_locked", locked))
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Rotation error") }
+            ToolResult.success(id, JSONObject().put("rotation_locked", locked).toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Rotation error") }
     }
 
     // ── Wi-Fi toggle (Android 10+ requires user interaction) ──────────────
     fun openWifiSettings(): ToolResult {
         context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        return ToolResult.success(JSONObject().put("wifi_settings_opened", true))
+        return ToolResult.success(id, JSONObject().put("wifi_settings_opened", true).toString())
     }
 
     // ── Bluetooth settings ─────────────────────────────────────────────────
     fun openBluetoothSettings(): ToolResult {
         context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        return ToolResult.success(JSONObject().put("bluetooth_settings_opened", true))
+        return ToolResult.success(id, JSONObject().put("bluetooth_settings_opened", true).toString())
     }
 
     // ── Get full device info ───────────────────────────────────────────────
@@ -159,7 +161,7 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
                     Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC
             val mediaVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             val ringVol = audioManager.getStreamVolume(AudioManager.STREAM_RING)
-            ToolResult.success(JSONObject().apply {
+            ToolResult.success(id, JSONObject().apply {
                 put("battery", batteryResult.data?.toString() ?: "")
                 put("brightness", brightness)
                 put("adaptive_brightness", adaptiveBrightness)
@@ -168,22 +170,22 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
                 put("model", android.os.Build.MODEL)
                 put("android_version", android.os.Build.VERSION.RELEASE)
                 put("sdk", android.os.Build.VERSION.SDK_INT)
-            })
-        } catch (e: Exception) { ToolResult.error(e.message ?: "Device info error") }
+            }.toString())
+        } catch (e: Exception) { ToolResult.error(id, e.message ?: "Device info error") }
     }
 
-    override suspend fun execute(params: JSONObject): ToolResult {
-        return when (val action = params.optString("action", "info")) {
-            "set_volume" -> setVolume(params.getInt("level"), params.optString("stream", "media"))
-            "get_volume" -> getVolume(params.optString("stream", "media"))
-            "set_brightness" -> setBrightness(params.optInt("level", 128), params.optBoolean("adaptive", false))
-            "set_dnd" -> setDoNotDisturb(params.getBoolean("enabled"))
+    override suspend fun execute(params: Map<String, String>): ToolResult {
+        return when (val action = (params["action"] ?: "info")) {
+            "set_volume" -> setVolume((params["level"]?.toIntOrNull() ?: return ToolResult.error(id, "Missing required parameter: " + "level")), (params["stream"] ?: "media"))
+            "get_volume" -> getVolume((params["stream"] ?: "media"))
+            "set_brightness" -> setBrightness((params["level"]?.toIntOrNull() ?: 128), (params["adaptive"]?.toBoolean() ?: false))
+            "set_dnd" -> setDoNotDisturb((params["enabled"]?.toBoolean() ?: return ToolResult.error(id, "Missing required parameter: " + "enabled")))
             "battery" -> getBatteryInfo()
-            "rotation_lock" -> setRotationLock(params.getBoolean("locked"))
+            "rotation_lock" -> setRotationLock((params["locked"]?.toBoolean() ?: return ToolResult.error(id, "Missing required parameter: " + "locked")))
             "wifi_settings" -> openWifiSettings()
             "bluetooth_settings" -> openBluetoothSettings()
             "info" -> getDeviceInfo()
-            else -> ToolResult.error("Unknown device settings action: $action")
+            else -> ToolResult.error(id, "Unknown device settings action: $action")
         }
     }
 }
