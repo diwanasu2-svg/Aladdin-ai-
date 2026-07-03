@@ -30,7 +30,7 @@ interface TodoDao {
     @Update suspend fun update(todo: TodoEntity)
     @Delete suspend fun delete(todo: TodoEntity)
     @Query("DELETE FROM todos WHERE id = :id") suspend fun deleteById(id: Long)
-    @Query("SELECT * FROM todos ORDER BY CASE priority WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'NORMAL' THEN 2 ELSE 3 END, dueAt ASC NULLS LAST")
+    @Query("SELECT * FROM todos ORDER BY CASE priority WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'NORMAL' THEN 2 ELSE 3 END, (CASE WHEN dueAt IS NULL THEN 1 ELSE 0 END), dueAt ASC")
     fun observeAll(): Flow<List<TodoEntity>>
     @Query("SELECT * FROM todos WHERE listName = :list ORDER BY CASE priority WHEN 'CRITICAL' THEN 0 WHEN 'HIGH' THEN 1 WHEN 'NORMAL' THEN 2 ELSE 3 END")
     suspend fun getByList(list: String): List<TodoEntity>
