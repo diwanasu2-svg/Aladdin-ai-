@@ -74,12 +74,14 @@ class DocumentScannerService(private val context: Context) {
         val result = GmsDocumentScanningResult.fromActivityResultIntent(data)
             ?: return DocumentScanResult.error("No scan data received")
 
-        val pages = result.pages.map { page ->
-            ScannedPage(
-                imageUri = page.imageUri,
-                width = 0,
-                height = 0
-            )
+        val pages = result.pages.orEmpty().mapNotNull { page ->
+            page?.let {
+                ScannedPage(
+                    imageUri = it.imageUri,
+                    width = 0,
+                    height = 0
+                )
+            }
         }
 
         val pdfUri = result.pdf?.uri

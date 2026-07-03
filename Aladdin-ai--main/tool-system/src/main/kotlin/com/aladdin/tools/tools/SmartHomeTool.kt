@@ -239,9 +239,9 @@ suspend fun toggleHomeAssistantEntity(entityId: String, baseUrl: String, token: 
             .url(url)
             .header("Authorization", "Bearer $token")
             .header("Content-Type", "application/json")
-            .post(body.toByteArray().let { okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/json"), it) })
+            .post(body.toRequestBody("application/json".toMediaType()))
             .build()
         val resp = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { client.newCall(req).execute() }
-        (resp.code() in 200..299).also { android.util.Log.i("SmartHome", "Toggle $entityId: ${resp.code()}") }
+        (resp.code in 200..299).also { android.util.Log.i("SmartHome", "Toggle $entityId: ${resp.code}") }
     } catch (e: Exception) { android.util.Log.e("SmartHome", "HA toggle failed: ${e.message}"); false }
 }
