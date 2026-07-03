@@ -1,7 +1,4 @@
 package com.aladdin.vision.understanding
-import javax.inject.Singleton
-import javax.inject.Inject
-import dagger.hilt.android.qualifiers.ApplicationContext
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -25,8 +22,7 @@ private const val DEFAULT_MODEL = "gemini-1.5-flash"
  * Configure with your Gemini API key via [configure] before use.
  * Obtain a key at: https://aistudio.google.com/app/apikey
  */
-@Singleton
-class GeminiVisionService @Inject constructor(@ApplicationContext private val context: Context) {
+class GeminiVisionService(private val context: Context) {
 
     private var model: GenerativeModel? = null
 

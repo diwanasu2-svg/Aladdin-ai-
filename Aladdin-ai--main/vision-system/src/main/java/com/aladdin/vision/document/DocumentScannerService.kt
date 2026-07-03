@@ -70,16 +70,17 @@ class DocumentScannerService(private val context: Context) {
      * Call this from your ActivityResult callback.
      */
     fun handleScanResult(data: android.content.Intent?): DocumentScanResult {
-        val result = GmsDocumentScanningResult.fromActivityResultData(data)
+        if (data == null) return DocumentScanResult.error("No scan data received")
+        val result = GmsDocumentScanningResult.fromActivityResultIntent(data)
             ?: return DocumentScanResult.error("No scan data received")
 
-        val pages = result.pages?.map { page ->
+        val pages = result.pages.map { page ->
             ScannedPage(
                 imageUri = page.imageUri,
                 width = 0,
                 height = 0
             )
-        } ?: emptyList()
+        }
 
         val pdfUri = result.pdf?.uri
 
