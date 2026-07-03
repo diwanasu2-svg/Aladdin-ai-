@@ -204,7 +204,10 @@ class MemoryAnalytics @Inject constructor(
             }
             appendLine()
             appendLine("── MEMORY GROWTH (last 7 days) ───────")
-            r.memoryGrowthByDay.takeLast(7).forEach { (date, count) ->
+            // NOTE: memoryGrowthByDay is a Map<String, Int>; Map has no takeLast(),
+            // so convert to a List<Pair<K, V>> first (this also makes the (date, count)
+            // destructuring unambiguous).
+            r.memoryGrowthByDay.toList().takeLast(7).forEach { (date, count) ->
                 appendLine("  $date: $count new memories")
             }
             appendLine()

@@ -77,14 +77,16 @@ object MemoryModule {
     @Provides @Singleton
     fun provideMemorySummarizer(): MemorySummarizer = MemorySummarizer()
 
+    // NOTE: HybridSearchEngine's actual constructor only takes
+    // (embeddingEngine, vectorStore, bm25Engine) - it does not take an
+    // ImportanceScorer. Order/arity here must match that constructor exactly.
     @Provides @Singleton
     fun provideHybridSearchEngine(
-        vectorStore: VectorStore,
-        bm25Engine: BM25Engine,
         embeddingEngine: EmbeddingEngine,
-        importanceScorer: ImportanceScorer
+        vectorStore: VectorStore,
+        bm25Engine: BM25Engine
     ): HybridSearchEngine =
-        HybridSearchEngine(vectorStore, bm25Engine, embeddingEngine, importanceScorer)
+        HybridSearchEngine(embeddingEngine, vectorStore, bm25Engine)
 
     // ── Phase 3 Systems ────────────────────────────────────────────────────────
 

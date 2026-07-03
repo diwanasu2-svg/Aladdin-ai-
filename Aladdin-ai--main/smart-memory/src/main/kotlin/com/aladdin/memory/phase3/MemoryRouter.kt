@@ -277,8 +277,9 @@ class MemoryRouter @Inject constructor(
         }
         if (result.relationships.isNotEmpty()) {
             sb.appendLine("=== RELATIONSHIPS ===")
+            // RelationshipEdge exposes `relationType`, not `relationshipType`.
             result.relationships.take(5).forEach { r ->
-                sb.appendLine("• ${r.fromName} → ${r.relationshipType} → ${r.toName}")
+                sb.appendLine("• ${r.fromName} → ${r.relationType} → ${r.toName}")
             }
         }
         if (result.reminders.isNotEmpty()) {
