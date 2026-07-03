@@ -69,8 +69,8 @@ dependencies {
     // ML Kit - Barcode Scanning
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
-    // ML Kit - Document Scanner
-    implementation("com.google.mlkit:document-scanner:16.0.0-beta1")
+    // ML Kit - Document Scanner (lives under com.google.android.gms, not com.google.mlkit)
+    implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
 
     // Google AI (Gemini) — unified version across all modules
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
