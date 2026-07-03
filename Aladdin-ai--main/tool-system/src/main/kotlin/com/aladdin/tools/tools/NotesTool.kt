@@ -45,7 +45,7 @@ class NotesTool @Inject constructor(private val noteDao: NoteDao) : BaseTool {
     private suspend fun createNote(params: Map<String, String>): ToolResult {
         val title = params["title"] ?: return ToolResult.error(id, "Missing title")
         val content = params["content"] ?: ""
-        val tags = params["tags"] ?: ""
+        val tags = params["tags"]?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
         val entity = NoteEntity(title = title, content = content, tags = tags)
         val noteId = noteDao.insert(entity)
         return ToolResult.success(id, "📝 Note created: '$title' (ID: $noteId)")
@@ -65,7 +65,7 @@ class NotesTool @Inject constructor(private val noteDao: NoteDao) : BaseTool {
         val note = noteDao.getById(noteId) ?: return ToolResult.error(id, "Note $noteId not found")
         return ToolResult.success(id, buildString {
             appendLine("📝 ${note.title}")
-            if (note.tags.isNotBlank()) appendLine("🏷 ${note.tags}")
+            if (note.tags.isNotEmpty()) appendLine("🏷 ${note.tags.joinToString(", ")}")
             appendLine()
             append(note.content)
         })
@@ -77,7 +77,7 @@ class NotesTool @Inject constructor(private val noteDao: NoteDao) : BaseTool {
         val updated = existing.copy(
             title = params["title"] ?: existing.title,
             content = params["content"] ?: existing.content,
-            tags = params["tags"] ?: existing.tags,
+            tags = params["tags"]?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: existing.tags,
             updatedAt = System.currentTimeMillis()
         )
         noteDao.update(updated)

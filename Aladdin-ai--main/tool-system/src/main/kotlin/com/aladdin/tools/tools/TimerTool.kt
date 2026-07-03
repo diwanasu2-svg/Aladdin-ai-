@@ -9,6 +9,7 @@ import com.aladdin.tools.db.entity.TimerState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -184,7 +185,7 @@ class TimerTool @Inject constructor(
                 activeTimers.remove(timerId)
                 sendTimerNotification(context, timerId, label)
                 // Update DB state
-                kotlinx.coroutines.GlobalScope.kotlinx.coroutines.launch(Dispatchers.IO) {
+                kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                     timerDao.updateState(timerId, TimerState.FINISHED.name, 0L)
                 }
             }
@@ -236,5 +237,5 @@ class TimerTool @Inject constructor(
     }
 }
 
-// Suppress GlobalScope warning in production — use structured concurrency in real app
-private val kotlinx.coroutines.GlobalScope = kotlinx.coroutines.GlobalScope
+// Note: using kotlinx.coroutines.GlobalScope here — acceptable for a fire-and-forget
+// DB update on timer completion; consider structured concurrency in a future refactor.
