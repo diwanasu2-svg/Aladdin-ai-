@@ -231,7 +231,7 @@ suspend fun toggleHomeAssistantEntity(entityId: String, baseUrl: String, token: 
     }
     return try {
         val url = "$baseUrl/api/services/homeassistant/toggle"
-        val body = "{"entity_id":"$entityId"}"
+        val body = "{\"entity_id\":\"$entityId\"}"
         val client = okhttp3.OkHttpClient()
         val req = okhttp3.Request.Builder()
             .url(url)
