@@ -53,7 +53,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
     // Vosk offline speech recognition / wake word
-    implementation("net.java.dev.jna:jna:5.14.0")
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
     implementation("com.alphacephei:vosk-android:0.3.47")
 
     // Porcupine wake word (AI-Rhino) — optional, add your own key
