@@ -64,4 +64,10 @@
 
     <!-- ─── OpenWeatherMap key (set your own key here or in BuildConfig) ─── -->
     <string name="openweather_api_key" translatable="false"></string>
+
+    <!-- ─── Home screen widget ─────────────────────────────────────────────── -->
+    <string name="widget_title">Aladdin</string>
+    <string name="widget_tap_mic">Tap mic to talk</string>
+    <string name="btn_voice">Start voice command</string>
+    <string name="widget_reminder">Add reminder</string>
 </resources>
