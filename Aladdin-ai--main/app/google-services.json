@@ -45,13 +45,54 @@
           "status": 1
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:1111111111111111111111",
+        "android_client_info": {
+          "package_name": "com.aladdin.app.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "000000000000-REPLACE_WITH_REAL.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_YOUR_FIREBASE_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "000000000000-REPLACE_WITH_REAL.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "analytics_service": {
+          "status": 1,
+          "analytics_property": {
+            "tracking_id": "REPLACE_WITH_GA_TRACKING_ID"
+          }
+        },
+        "cloud_messaging": {
+          "status": 1
+        },
+        "crashlytics_kit": {
+          "status": 1
+        }
+      }
     }
   ],
   "configuration_version": "1",
   "_SETUP_INSTRUCTIONS": [
     "1. Go to https://console.firebase.google.com",
     "2. Create a new project named 'aladdin-app'",
-    "3. Add an Android app with package name 'com.aladdin.app'",
+    "3. Add an Android app with package name 'com.aladdin.app' AND a second one with 'com.aladdin.app.debug' (debug build uses an applicationIdSuffix)",
     "4. Download the real google-services.json and replace this file",
     "5. Enable: Analytics, Cloud Messaging (FCM), Crashlytics in Firebase console",
     "6. Add SHA-1/SHA-256 fingerprints for signing key"
