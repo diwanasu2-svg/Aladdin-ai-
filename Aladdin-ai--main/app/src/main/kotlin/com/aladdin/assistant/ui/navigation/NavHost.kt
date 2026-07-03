@@ -104,7 +104,6 @@ fun AladdinNavHost(viewModel: MainViewModel) {
                 onBack = { navController.popBackStack() }
             )
         }
-    }
         composable(Screen.ProviderSettings.route) {
             ProviderSettingsScreen(
                 onBack = { navController.popBackStack() }

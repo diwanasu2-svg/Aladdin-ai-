@@ -96,11 +96,9 @@ class VectorMemoryStore @Inject constructor(
     /** Item 42: Build token-limited context string from memory. */
     suspend fun buildContext(query: String, maxEntries: Int = 8): String {
         val results = search(query, topK = maxEntries); if (results.isEmpty()) return ""
-        val sb = StringBuilder("Relevant memory:
-"); var tokens = 20
+        val sb = StringBuilder("Relevant memory:\n"); var tokens = 20
         for (r in results) {
-            val line = "[\${r.entry.type.name}] \${r.entry.content}
-"
+            val line = "[\${r.entry.type.name}] \${r.entry.content}\n"
             val t = (line.length / 4).coerceAtLeast(1); if (tokens + t > MAX_CTX_TOKENS) break
             sb.append(line); tokens += t
         }
@@ -111,10 +109,7 @@ class VectorMemoryStore @Inject constructor(
         if (messages.isEmpty()) return ""
         val ret = mutableListOf<String>(); var t = 0
         for (m in messages.reversed()) { val mt = (m.length / 4).coerceAtLeast(1); if (t + mt > maxTokens) break; ret.add(0, m); t += mt }
-        return if (messages.size > ret.size) "[\${messages.size - ret.size} earlier]
-\${ret.joinToString("
-")}" else ret.joinToString("
-")
+        return if (messages.size > ret.size) "[\${messages.size - ret.size} earlier]\n\${ret.joinToString("\n")}" else ret.joinToString("\n")
     }
 
     fun getStats() = mapOf("total" to entries.size, "by_type" to entries.groupBy { it.type.name }.mapValues { it.value.size }, "cache" to cache.size)

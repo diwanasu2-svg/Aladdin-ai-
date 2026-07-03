@@ -79,7 +79,7 @@ class IntelligenceEngine @Inject constructor(@ApplicationContext private val con
         }
         if (ctx.batteryPct < 20) recs += Recommendation("battery_save", "Battery low (\${ctx.batteryPct}%) — enable power saving?", 0.95f)
         history.groupBy { it.first }.mapValues { it.value.size }.entries.sortedByDescending { it.value }.take(2).forEach { (q, c) ->
-            if (c >= 3) recs += Recommendation("repeat_\${q.take(15)}", "You often ask: "\$q"", c * 0.1f)
+            if (c >= 3) recs += Recommendation("repeat_\${q.take(15)}", "You often ask: \$q", c * 0.1f)
         }
         return recs.sortedByDescending { it.score }
     }

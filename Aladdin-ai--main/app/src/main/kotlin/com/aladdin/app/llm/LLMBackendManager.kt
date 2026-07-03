@@ -42,7 +42,7 @@ class LLMBackendManager @Inject constructor(
         val llamaReady = withContext(Dispatchers.IO) { llamaEngine.loadModel() }
         Log.i(TAG, "llama.cpp: \$llamaReady")
         val mlcReady = withContext(Dispatchers.IO) { mlcEngine.initialize(preferGpu = true) }  // Item 45
-        Log.i(TAG, "MLC LLM: \$mlcReady GPU=\${if (mlcReady) mlcEngine.getGpuInfo() else "N/A"}")
+        Log.i(TAG, "MLC LLM: \$mlcReady GPU=\${if (mlcReady) mlcEngine.getGpuInfo() else \"N/A\"}")
         monitorNetwork()  // Item 47
     }
 

@@ -217,14 +217,4 @@ data class ModelInfo(
     val sizeMb: Int = 0,
     val sha256: String? = null,
     val required: Boolean = false
-
-    /** Phase 14 fix — Called from AladdinApp.onCreate(); logs pending models without blocking. */
-    fun ensureModelsPresent() {
-        val pending = getPendingModels()
-        if (pending.isEmpty()) {
-            android.util.Log.i(TAG, "All models present")
-        } else {
-            android.util.Log.w(TAG, "Pending models: ${pending.map { it.name }}")
-        }
-    }
 )
