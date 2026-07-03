@@ -96,8 +96,9 @@ class NotificationControlTool @Inject constructor(@ApplicationContext private va
             val bundle = android.os.Bundle().apply {
                 putCharSequence(replyAction.remoteInputs[0].resultKey, replyText)
             }
-            val intent = android.app.RemoteInput.addResultsToIntent(
-                replyAction.remoteInputs, android.content.Intent(), bundle
+            val intent = android.content.Intent()
+            android.app.RemoteInput.addResultsToIntent(
+                replyAction.remoteInputs, intent, bundle
             )
             replyAction.actionIntent.send(context, 0, intent)
             ToolResult.success(id, JSONObject().apply {
