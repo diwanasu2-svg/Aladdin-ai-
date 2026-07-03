@@ -136,7 +136,7 @@ dependencies {
     implementation(project(":vision-system"))
 
     // ─── Core desugaring (API < 26 back-compat) ──────────────────────────────
-    coreLibraryDesugaring("com.android.tools.desugar_jdk_libs:desugar_jdk_libs:2.0.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
     // ─── Kotlin ─────────────────────────────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
