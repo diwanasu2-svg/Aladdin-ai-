@@ -10,6 +10,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import com.aladdin.voicecore.BuildConfig
 import com.aladdin.voicecore.models.ErrorCode
 import com.aladdin.voicecore.models.VoiceCoreConfig
 import com.aladdin.voicecore.models.VoiceCoreEvent

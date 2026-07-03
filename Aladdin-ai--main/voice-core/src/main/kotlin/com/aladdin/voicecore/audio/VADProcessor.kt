@@ -1,6 +1,7 @@
 package com.aladdin.voicecore.audio
 
 import android.util.Log
+import com.aladdin.voicecore.BuildConfig
 import com.aladdin.voicecore.models.VoiceCoreConfig
 
 /**

@@ -15,6 +15,11 @@ import javax.inject.Singleton
  *      - New LONG_TERM_GOAL decomposition with multi-step milestone planning.
  *      - Dependency IDs are seeded correctly so HTNPlanner can inject them.
  */
+private typealias Method = (
+    goal: String, params: Map<String, String>,
+    parentId: String, depth: Int, priority: TaskPriority
+) -> List<Task>
+
 @Singleton
 class TaskDecomposer @Inject constructor() {
 
@@ -70,11 +75,6 @@ class TaskDecomposer @Inject constructor() {
     }
 
     // ─── Method Library ───────────────────────────────────────────────────────
-
-    private typealias Method = (
-        goal: String, params: Map<String, String>,
-        parentId: String, depth: Int, priority: TaskPriority
-    ) -> List<Task>
 
     private fun getMethod(intent: IntentType): Method = when (intent) {
         IntentType.SET_REMINDER       -> reminderMethod
