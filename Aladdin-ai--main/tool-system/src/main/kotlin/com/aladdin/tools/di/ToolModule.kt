@@ -126,8 +126,8 @@ object ToolModule {
     fun provideAppAutomationTool(@ApplicationContext ctx: Context): AppAutomationTool = AppAutomationTool(ctx)
 
     @Provides @Singleton
-    fun provideClipboardHistoryTool(@ApplicationContext ctx: Context, dao: ClipboardDao): ClipboardHistoryTool =
-        ClipboardHistoryTool(ctx, dao)
+    fun provideClipboardHistoryTool(@ApplicationContext ctx: Context): ClipboardHistoryTool =
+        ClipboardHistoryTool(ctx)
 
     @Provides @Singleton
     fun provideNotificationControlTool(@ApplicationContext ctx: Context): NotificationControlTool =
