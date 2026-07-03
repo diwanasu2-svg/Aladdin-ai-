@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.merge
+import kotlinx.coroutines.flow.merge
 
 /**
  * MultilingualVoiceCoreService — Foreground service with full Hindi/Gujarati/English support.

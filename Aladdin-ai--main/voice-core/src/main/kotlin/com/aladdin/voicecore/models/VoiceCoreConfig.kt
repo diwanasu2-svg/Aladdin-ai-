@@ -88,7 +88,7 @@ sealed class VoiceCoreEvent {
 
 enum class ErrorCode {
     MIC_UNAVAILABLE,
-    MIC_PERMISSION_DENIED,
+    PERMISSION_DENIED,
     WAKE_WORD_MODEL_NOT_FOUND,
     STT_MODEL_NOT_FOUND,
     TTS_MODEL_NOT_FOUND,

@@ -47,6 +47,7 @@ class MultilingualTTSEngine(
         private const val TAG = "MultilingualTTSEngine"
         private const val TTS_SAMPLE_RATE = 22_050
         private const val CHUNK_SIZE_BYTES = 4_096
+        private const val ANDROID_TTS_VOICE = "__android_tts__"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -315,9 +316,5 @@ class MultilingualTTSEngine(
             AudioTrack.MODE_STREAM,
             AudioManager.AUDIO_SESSION_ID_GENERATE,
         )
-    }
-
-    companion object {
-        private const val ANDROID_TTS_VOICE = "__android_tts__"
     }
 }
