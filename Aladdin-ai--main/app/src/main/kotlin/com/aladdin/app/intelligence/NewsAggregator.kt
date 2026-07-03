@@ -22,7 +22,7 @@ class NewsAggregator @Inject constructor() {
         private val RSS_FEEDS = mapOf(
             "BBC"       to "https://feeds.bbci.co.uk/news/rss.xml",
             "Reuters"   to "https://feeds.reuters.com/reuters/topNews",
-            "TechCrunch"to "https://techcrunch.com/feed/",
+            "TechCrunch" to "https://techcrunch.com/feed/",
             "Ars"       to "https://feeds.arstechnica.com/arstechnica/index"
         )
         private const val NEWS_API = "https://newsapi.org/v2/top-headlines"

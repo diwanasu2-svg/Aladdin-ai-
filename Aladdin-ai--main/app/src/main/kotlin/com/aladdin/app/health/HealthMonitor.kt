@@ -153,7 +153,7 @@ class HealthMonitor @Inject constructor(
     private fun isMicAvailable(): Boolean {
         return try {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            !am.isMicrophoneMute
+            (!am.isMicrophoneMute)
         } catch (_: Exception) { true }
     }
 

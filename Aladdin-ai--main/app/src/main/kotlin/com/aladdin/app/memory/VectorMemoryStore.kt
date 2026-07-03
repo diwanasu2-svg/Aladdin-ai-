@@ -109,7 +109,7 @@ class VectorMemoryStore @Inject constructor(
         if (messages.isEmpty()) return ""
         val ret = mutableListOf<String>(); var t = 0
         for (m in messages.reversed()) { val mt = (m.length / 4).coerceAtLeast(1); if (t + mt > maxTokens) break; ret.add(0, m); t += mt }
-        return if (messages.size > ret.size) "[\${messages.size - ret.size} earlier]\n\${ret.joinToString("\n")}" else ret.joinToString("\n")
+        return if (messages.size > ret.size) "[${messages.size - ret.size} earlier]\n${ret.joinToString("\n")}" else ret.joinToString("\n")
     }
 
     fun getStats() = mapOf("total" to entries.size, "by_type" to entries.groupBy { it.type.name }.mapValues { it.value.size }, "cache" to cache.size)

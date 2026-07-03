@@ -5,7 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 
-object NotificationChannels {
+object AppNotificationChannels {
 
     const val CHANNEL_ASSISTANT = "aladdin_assistant"
     const val CHANNEL_VOICE     = "aladdin_voice"
