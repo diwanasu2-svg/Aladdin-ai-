@@ -63,6 +63,16 @@ dependencies {
     // WorkManager (background workers)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // Media session (MusicControlTool)
+    implementation("androidx.media:media:1.7.0")
+
+    // JavaMail for Android (EmailTool SMTP/IMAP)
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
+
+    // ML Kit text recognition (PdfReaderTool OCR)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")

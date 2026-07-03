@@ -162,7 +162,7 @@ class DeviceSettingsTool @Inject constructor(@ApplicationContext private val con
             val mediaVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
             val ringVol = audioManager.getStreamVolume(AudioManager.STREAM_RING)
             ToolResult.success(id, JSONObject().apply {
-                put("battery", batteryResult.data?.toString() ?: "")
+                put("battery", batteryResult.output)
                 put("brightness", brightness)
                 put("adaptive_brightness", adaptiveBrightness)
                 put("media_volume", mediaVol)

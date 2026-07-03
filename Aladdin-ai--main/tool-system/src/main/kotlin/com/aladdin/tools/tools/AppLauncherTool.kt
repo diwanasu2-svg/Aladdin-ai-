@@ -3,6 +3,7 @@ package com.aladdin.tools.tools
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -143,6 +144,7 @@ class AppLauncherTool @Inject constructor(@ApplicationContext private val contex
             val pm = context.packageManager
             val info = pm.getPackageInfo(packageName, 0)
             val appInfo = info.applicationInfo
+                ?: return ToolResult.error(id, "App info unavailable for '$packageName'")
             val label = pm.getApplicationLabel(appInfo).toString()
             val version = info.versionName ?: "unknown"
             val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

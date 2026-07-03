@@ -110,8 +110,10 @@ class SmsTool @Inject constructor(@ApplicationContext private val context: Conte
     suspend fun extractOtp(fromNumber: String? = null): ToolResult = withContext(Dispatchers.IO) {
         val result = readInbox(10, fromNumber)
         if (!result.success) return@withContext result
-        val data = result.data ?: return@withContext ToolResult.error(id, "No data")
-        val messages = (data as JSONObject).getJSONArray("messages")
+        val data = try { JSONObject(result.output) } catch (e: Exception) {
+            return@withContext ToolResult.error(id, "No data")
+        }
+        val messages = data.getJSONArray("messages")
         val otps = mutableListOf<JSONObject>()
         for (i in 0 until messages.length()) {
             val msg = JSONObject(messages.getString(i))
