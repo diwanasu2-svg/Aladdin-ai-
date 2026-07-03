@@ -89,7 +89,8 @@ class JarvisOrchestrator @Inject constructor(
 
         // Phase 4 #6 — surface overdue goals in the session prompt
         val overdueGoals = safeCall("overdue goals") { goalManager.getActiveGoals().filter { g ->
-            g.dueAtMs != null && g.dueAtMs < System.currentTimeMillis()
+            val dueAtMs = g.dueAtMs
+            dueAtMs != null && dueAtMs < System.currentTimeMillis()
         }.take(3) } ?: emptyList()
 
         val systemContextParts = mutableListOf<String>()
