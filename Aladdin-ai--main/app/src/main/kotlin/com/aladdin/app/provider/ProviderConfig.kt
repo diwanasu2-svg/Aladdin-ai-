@@ -52,7 +52,7 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
 
     // Item 26: Ollama
     var ollamaHost: String
-        get() = prefs.getString("ollama_host", "192.168.1.100") ?: "192.168.1.100"
+        get() = prefs.getString("ollama_host", "127.0.0.1") ?: "127.0.0.1"
         set(v) { prefs.edit { putString("ollama_host", v) } }
     var ollamaPort: Int
         get() = prefs.getInt("ollama_port", 11434)

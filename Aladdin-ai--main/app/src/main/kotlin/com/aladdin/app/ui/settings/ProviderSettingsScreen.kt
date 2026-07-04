@@ -22,7 +22,7 @@ fun ProviderSettingsScreen(
     onBack: () -> Unit = {}
 ) {
     var selectedProvider by remember { mutableStateOf("Ollama") }
-    var ollamaHost by remember { mutableStateOf("http://localhost:11434") }
+    var ollamaHost by remember { mutableStateOf("http://127.0.0.1:11434") }
     var ollamaModel by remember { mutableStateOf("llama3") }
     var geminiApiKey by remember { mutableStateOf("") }
     var openAiApiKey by remember { mutableStateOf("") }
