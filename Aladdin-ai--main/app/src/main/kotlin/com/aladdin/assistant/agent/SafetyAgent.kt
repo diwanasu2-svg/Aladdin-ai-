@@ -1,5 +1,8 @@
-import dagger.hilt.android.qualifiers.ApplicationContext
+package com.aladdin.assistant.agent
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

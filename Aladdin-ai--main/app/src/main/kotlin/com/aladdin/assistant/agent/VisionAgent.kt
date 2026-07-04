@@ -1,5 +1,8 @@
-import dagger.hilt.android.qualifiers.ApplicationContext
+package com.aladdin.assistant.agent
 
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
