@@ -10,6 +10,7 @@ plugins {
     id("com.google.devtools.ksp")
     id("kotlin-parcelize")
     id("com.google.gms.google-services")    // Firebase / FCM
+    id("com.google.firebase.crashlytics")   // Firebase Crashlytics build ID + mapping upload
 }
 
 // ─── Signing config from local.properties ────────────────────────────────────
