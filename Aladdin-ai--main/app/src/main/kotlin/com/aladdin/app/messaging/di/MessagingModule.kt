@@ -27,8 +27,13 @@ import javax.inject.Singleton
 object MessagingModule {
 
     // ─── Shared OkHttpClient ──────────────────────────────────────────────────
+    // NOTE: Qualified with @Named("messaging") because AppModule already provides
+    // an unqualified, singleton OkHttpClient (with auth + cert pinning) for the
+    // main backend API. Two unqualified OkHttpClient bindings in the same
+    // SingletonComponent caused a Dagger/DuplicateBindings error, so messaging's
+    // client (logging + basic timeouts only, no backend auth) gets its own name.
 
-    @Provides @Singleton
+    @Provides @Singleton @Named("messaging")
     fun provideOkHttpClient(): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
@@ -46,7 +51,7 @@ object MessagingModule {
     // We use a generic endpoint host and the bot constructs the full path.
 
     @Provides @Singleton @Named("telegram")
-    fun provideTelegramRetrofit(client: OkHttpClient): Retrofit =
+    fun provideTelegramRetrofit(@Named("messaging") client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://api.telegram.org/bot_placeholder/")
             .client(client)
@@ -60,7 +65,7 @@ object MessagingModule {
     // ─── WhatsApp ─────────────────────────────────────────────────────────────
 
     @Provides @Singleton @Named("whatsapp")
-    fun provideWhatsAppRetrofit(client: OkHttpClient): Retrofit =
+    fun provideWhatsAppRetrofit(@Named("messaging") client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://graph.facebook.com/v19.0/")
             .client(client)
@@ -74,7 +79,7 @@ object MessagingModule {
     // ─── Discord ──────────────────────────────────────────────────────────────
 
     @Provides @Singleton @Named("discord")
-    fun provideDiscordRetrofit(client: OkHttpClient): Retrofit =
+    fun provideDiscordRetrofit(@Named("messaging") client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://discord.com/api/v10/")
             .client(client)
@@ -88,7 +93,7 @@ object MessagingModule {
     // ─── Gmail ────────────────────────────────────────────────────────────────
 
     @Provides @Singleton @Named("gmail")
-    fun provideGmailRetrofit(client: OkHttpClient): Retrofit =
+    fun provideGmailRetrofit(@Named("messaging") client: OkHttpClient): Retrofit =
         Retrofit.Builder()
             .baseUrl("https://gmail.googleapis.com/gmail/v1/")
             .client(client)
