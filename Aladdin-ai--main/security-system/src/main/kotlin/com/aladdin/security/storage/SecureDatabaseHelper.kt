@@ -70,11 +70,12 @@ class SecureDatabaseHelper(
         }
     }
 
-    override fun onCreate(db: android.database.sqlite.SQLiteDatabase) {
+    override fun onCreate(db: SQLiteDatabase) {
         Log.i(TAG, "Creating schema for $dbName")
+        db.execSQL(schema)
     }
 
-    override fun onUpgrade(db: android.database.sqlite.SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         Log.i(TAG, "Upgrading $dbName from v$oldVersion to v$newVersion")
     }
 
