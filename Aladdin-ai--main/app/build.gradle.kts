@@ -49,7 +49,7 @@ android {
         }
     }
 
-    // ─── Signing (release) ───────────────────────────────────────────────────
+    // ─── Signing ─────────────────────────────────────────────────────────────
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {
@@ -58,6 +58,18 @@ android {
                 storeFile     = keystoreProperties["storeFile"]?.let { file(it as String) }
                 storePassword = keystoreProperties["storePassword"] as String? ?: ""
             }
+        }
+        // Stable, committed debug keystore so every CI build (which otherwise
+        // uses a fresh auto-generated ~/.android/debug.keystore per runner)
+        // is always signed with the SAME key. Without this, each new debug
+        // APK built on GitHub Actions gets a different random signature,
+        // which makes installing an update over a previous build fail with
+        // a generic "App not installed" error on the device.
+        create("debug") {
+            storeFile     = rootProject.file("keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias      = "androiddebugkey"
+            keyPassword   = "android"
         }
     }
 
@@ -68,6 +80,7 @@ android {
             isDebuggable = true
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            signingConfig = signingConfigs.getByName("debug")
         }
         release {
             isMinifyEnabled = true
