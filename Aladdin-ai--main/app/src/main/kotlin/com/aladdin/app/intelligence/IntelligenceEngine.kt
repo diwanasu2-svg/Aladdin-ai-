@@ -62,7 +62,7 @@ class IntelligenceEngine @Inject constructor(@ApplicationContext private val con
         val caps = cm.getNetworkCapabilities(cm.activeNetwork)
         val net = when { caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true -> "wifi"; caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true -> "cellular"; else -> "none" }
         val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        val mi = android.app.ActivityManager.MemoryInfo(); am.getMemInfo(mi)
+        val mi = android.app.ActivityManager.MemoryInfo(); am.getMemoryInfo(mi)
         return DeviceContext(cal.get(java.util.Calendar.HOUR_OF_DAY), lvl * 100 / scale, charging, net, mi.availMem / 1_048_576L)
     }
 
@@ -102,7 +102,7 @@ class IntelligenceEngine @Inject constructor(@ApplicationContext private val con
         val total = habits.values.sumOf { it.total }.coerceAtLeast(1)
         return habits.values.filter { it.total >= 3 }.map { p ->
             val prior = p.total.toFloat() / total
-            val like = (p.hourCounts[h] ?: 0 + 1f) / (p.total + 24f)
+            val like = ((p.hourCounts[h] ?: 0) + 1f) / (p.total + 24f)
             HabitPrediction(p.query, prior * like, if (p.total >= 10) 0.8f else 0.5f)
         }.sortedByDescending { it.probability }.take(topN)
     }
@@ -110,9 +110,9 @@ class IntelligenceEngine @Inject constructor(@ApplicationContext private val con
     // ── Item 68: Automation ──────────────────────────────────────────────────
     data class AutomationTrigger(val id: String, val name: String, val condition: () -> Boolean, val action: suspend () -> Unit, val enabled: Boolean = true)
     private val automations = mutableListOf<AutomationTrigger>()
-    fun registerAutomation(t: AutomationTrigger) { automations.add(t); Log.i(TAG, "Automation: \${t.name}") }
+    fun registerAutomation(t: AutomationTrigger) { automations.add(t); Log.i(TAG, "Automation: ${t.name}") }
     suspend fun checkAutomations() = automations.filter { it.enabled && it.condition() }.forEach { a ->
-        Log.i(TAG, "Fired: \${a.name}")
+        Log.i(TAG, "Fired: ${a.name}")
         try { a.action() } catch (e: Exception) { Log.e(TAG, "Automation '\${a.name}': \${e.message}") }
     }
 }

@@ -127,7 +127,7 @@ class HealthMonitor @Inject constructor(
         return try {
             val mi = android.app.ActivityManager.MemoryInfo()
             (context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager)
-                .getMemInfo(mi)
+                .getMemoryInfo(mi)
             val totalMb = mi.totalMem / 1_048_576L
             val usedMb  = (mi.totalMem - mi.availMem) / 1_048_576L
             Pair(usedMb, totalMb)

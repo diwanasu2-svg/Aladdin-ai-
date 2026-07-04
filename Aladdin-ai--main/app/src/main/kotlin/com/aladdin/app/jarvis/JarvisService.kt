@@ -105,7 +105,7 @@ class JarvisService : LifecycleService() {
                 shutdown(); return START_NOT_STICKY
             }
             ACTION_START_LISTENING -> conversationManager.startSession()
-            ACTION_PAUSE_TTS       -> tts?.playSilence(0, TextToSpeech.QUEUE_FLUSH, null, "silence")
+            ACTION_PAUSE_TTS       -> tts?.playSilence(0, TextToSpeech.QUEUE_FLUSH, "silence")
             ACTION_RESUME_TTS      -> { /* TTS resumes automatically */ }
             else -> bootUp()  // ACTION_START or null (system restart)
         }

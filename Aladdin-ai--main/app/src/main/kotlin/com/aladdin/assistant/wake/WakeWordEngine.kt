@@ -101,7 +101,7 @@ class WakeWordEngine(private val context: Context) {
         val frameBuf = ShortArray(FRAME_SIZE); var consecutive = 0
 
         try {
-            while (isListening.get() && isActive) {
+            while (isListening.get() && currentCoroutineContext().isActive) {
                 val read = rec.read(frameBuf, 0, FRAME_SIZE)
                 if (read <= 0) continue
                 val frame = FloatArray(read) { frameBuf[it] / 32768f }

@@ -39,6 +39,9 @@ class MainViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _voiceTranscript = MutableSharedFlow<String>(replay = 1, extraBufferCapacity = 8)
+    val voiceTranscript: SharedFlow<String> = _voiceTranscript.asSharedFlow()
+
     val settings: StateFlow<AppSettings> = dataStore.data
         .map { prefs ->
             val json = prefs[SETTINGS_KEY] ?: return@map AppSettings()
@@ -65,6 +68,12 @@ class MainViewModel @Inject constructor(
     fun setVoiceState(state: VoiceState) { _voiceState.value = state }
 
     fun setVoiceAmplitude(amp: Float) { _voiceAmplitude.value = amp }
+
+    fun setVoiceTranscript(text: String) { _voiceTranscript.tryEmit(text) }
+
+    fun startVoiceInput() { _voiceState.value = VoiceState.LISTENING }
+
+    fun stopVoiceInput() { _voiceState.value = VoiceState.IDLE }
 
     fun selectConversation(id: String) {
         _activeConversationId.value = id

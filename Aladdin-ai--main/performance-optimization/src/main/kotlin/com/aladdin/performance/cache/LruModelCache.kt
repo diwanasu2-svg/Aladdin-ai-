@@ -24,7 +24,7 @@ class LruModelCache<T>(
         map[key]?.also { it.touch() }?.value
     }
 
-    override suspend fun put(key: String, value: T, sizeBytes: Long) = lock.write {
+    override suspend fun put(key: String, value: T, sizeBytes: Long): Unit = lock.write {
         evict(key)                         // remove old entry if re-inserting
         while (usedBytes + sizeBytes > maxBytes && map.isNotEmpty()) {
             val lru = map.entries.first()
@@ -35,10 +35,12 @@ class LruModelCache<T>(
         map[key] = CacheEntry(key, value, sizeBytes)
         usedBytes += sizeBytes
         Log.i(TAG, "Cached '$key' (${sizeBytes / 1024}KB) — total ${usedBytes / 1024 / 1024}MB / ${maxBytes / 1024 / 1024}MB")
+        Unit
     }
 
-    override fun evict(key: String) = lock.write {
+    override fun evict(key: String): Unit = lock.write {
         map.remove(key)?.let { usedBytes -= it.sizeBytes }
+        Unit
     }
 
     override fun evictAll() = lock.write { map.clear(); usedBytes = 0 }

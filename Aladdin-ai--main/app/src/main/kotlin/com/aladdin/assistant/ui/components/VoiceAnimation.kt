@@ -50,7 +50,7 @@ fun VoiceAnimationOrb(
     val rotationAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(voiceState.rotationDuration(), LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(durationMillis = voiceState.rotationDuration(), easing = LinearEasing)),
         label = "rotation"
     )
 

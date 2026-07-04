@@ -75,7 +75,7 @@ class StreamingSTT(
         var lastVoiceMs = System.currentTimeMillis()
 
         try {
-            while (isRecording.get() && isActive) {
+            while (isRecording.get() && currentCoroutineContext().isActive) {
                 val read = rec.read(buf, 0, CHUNK_SAMPLES)
                 if (read <= 0) { delay(5); continue }
                 val chunk = buf.copyOf(read)

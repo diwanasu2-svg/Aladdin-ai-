@@ -133,7 +133,10 @@ object AppModule {
     fun provideBackupManager(@ApplicationContext ctx: Context): BackupManager = BackupManager(ctx)
 
     @Provides @Singleton
-    fun provideLlamaCppEngine(@ApplicationContext ctx: Context): LlamaCppEngine = LlamaCppEngine(ctx)
+    fun provideLlamaCppEngine(
+        @ApplicationContext ctx: Context,
+        quantSelector: QuantizedModelSelector,
+    ): LlamaCppEngine = LlamaCppEngine(ctx, quantSelector)
 
     @Provides @Singleton
     fun provideMlcLlmEngine(@ApplicationContext ctx: Context): MlcLlmEngine = MlcLlmEngine(ctx)
@@ -142,10 +145,10 @@ object AppModule {
     fun provideQuantizedModelSelector(@ApplicationContext ctx: Context): QuantizedModelSelector = QuantizedModelSelector(ctx)
 
     @Provides @Singleton
-    fun provideFallbackChain(@ApplicationContext ctx: Context): FallbackChain = FallbackChain(ctx)
+    fun provideFallbackChain(providerManager: ProviderManager): FallbackChain = FallbackChain(providerManager)
 
     @Provides @Singleton
-    fun provideResponseCache(): ResponseCache = ResponseCache()
+    fun provideResponseCache(@ApplicationContext ctx: Context): ResponseCache = ResponseCache(ctx)
 
     @Provides @Singleton
     fun provideConversationContextWindow(): ConversationContextWindow = ConversationContextWindow()

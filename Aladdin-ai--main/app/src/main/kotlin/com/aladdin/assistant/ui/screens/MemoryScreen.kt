@@ -203,6 +203,7 @@ private fun MemoryCard(memory: MemoryEntry, onDelete: () -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AddMemoryDialog(onDismiss: () -> Unit, onAdd: (String, String, MemoryCategory) -> Unit) {
     var title by remember { mutableStateOf("") }

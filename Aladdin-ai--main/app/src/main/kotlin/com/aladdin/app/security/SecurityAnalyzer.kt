@@ -129,7 +129,7 @@ class SecurityAnalyzer @Inject constructor(
             val pm  = context.packageManager
             val pkg = context.packageName
             val info = pm.getPackageInfo(pkg, android.content.pm.PackageManager.GET_SIGNATURES)
-            if (info.signatures == null || info.signatures.isEmpty()) {
+            if (info.signatures.isNullOrEmpty()) {
                 issues.add("App signature not found — possible tampering")
             }
 

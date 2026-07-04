@@ -55,9 +55,9 @@ class LLMRetryLogic @Inject constructor() {
                     throw PermanentFailureException("$operationName failed: ${e.message}", e)
                 }
                 if (attempt < config.maxAttempts - 1) {
-                    val delay = backoffDelay(attempt, config)
-                    Log.w(TAG, "$operationName attempt ${attempt + 1}/${config.maxAttempts} failed: ${e.message}. Retrying in ${delay}ms")
-                    delay(delay)
+                    val delayMs = backoffDelay(attempt, config)
+                    Log.w(TAG, "$operationName attempt ${attempt + 1}/${config.maxAttempts} failed: ${e.message}. Retrying in ${delayMs}ms")
+                    delay(delayMs)
                 } else {
                     Log.e(TAG, "$operationName exhausted ${config.maxAttempts} attempts: ${e.message}")
                 }

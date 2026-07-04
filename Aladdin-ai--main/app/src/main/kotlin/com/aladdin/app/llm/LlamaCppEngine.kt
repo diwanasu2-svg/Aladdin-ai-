@@ -58,7 +58,7 @@ class LlamaCppEngine @Inject constructor(
 
     private var modelHandle: Long = 0L
     private var loadedModelPath: String? = null
-    private val isLoaded: Boolean get() = modelHandle != 0L
+    val isLoaded: Boolean get() = modelHandle != 0L
     val isAvailable: Boolean get() = nativeLoaded
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)

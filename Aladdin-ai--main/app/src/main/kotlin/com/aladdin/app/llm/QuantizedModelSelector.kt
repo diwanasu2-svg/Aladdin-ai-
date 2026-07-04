@@ -25,13 +25,11 @@ class QuantizedModelSelector @Inject constructor(
     }
 
     enum class QuantLevel(val label: String, val ramRequiredMb: Int, val quality: Int) {
-        Q4("Q4_K_M", ramMb = 2048,  quality = 60),
-        Q5("Q5_K_M", ramMb = 2560,  quality = 75),
-        Q8("Q8_0",   ramMb = 4096,  quality = 90),
-        F16("F16",   ramMb = 8192,  quality = 100)
+        Q4("Q4_K_M", ramRequiredMb = 2048,  quality = 60),
+        Q5("Q5_K_M", ramRequiredMb = 2560,  quality = 75),
+        Q8("Q8_0",   ramRequiredMb = 4096,  quality = 90),
+        F16("F16",   ramRequiredMb = 8192,  quality = 100)
     }
-
-    private val QuantLevel.ramMb: Int get() = ramRequiredMb
 
     data class ModelSelection(
         val modelName: String,
@@ -81,7 +79,7 @@ class QuantizedModelSelector @Inject constructor(
     private fun getAvailableRamMb(): Long {
         return try {
             val mi = ActivityManager.MemoryInfo()
-            (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemInfo(mi)
+            (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(mi)
             mi.availMem / 1_048_576L
         } catch (_: Exception) { 2048L }
     }
@@ -95,4 +93,4 @@ class QuantizedModelSelector @Inject constructor(
 }
 
 private val QuantizedModelSelector.QuantLevel.ramMb: Int
-    get() = ramRequiredMb
+    get() = this.ramRequiredMb

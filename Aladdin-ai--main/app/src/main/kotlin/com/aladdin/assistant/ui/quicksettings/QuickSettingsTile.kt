@@ -55,12 +55,6 @@ class AladdinQuickSettingsTile : TileService() {
         updateTile()
     }
 
-    override fun onLongClick() {
-        super.onLongClick()
-        Log.d(TAG, "Tile long-pressed — opening main app")
-        launchMainApp()
-    }
-
     override fun onStopListening() {
         super.onStopListening()
         Log.d(TAG, "onStopListening")

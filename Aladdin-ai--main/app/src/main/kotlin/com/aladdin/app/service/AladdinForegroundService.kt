@@ -214,7 +214,7 @@ class AladdinForegroundService : LifecycleService() {
         isRunning = false
         wakeWordDetector.stopListening()
         serviceScope.cancel()
-        orchestrator.shutdown()
+        orchestrator.release()
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

@@ -130,7 +130,7 @@ class PerformanceBenchmarkSuite(private val context: Context) {
 
     private inline fun bench(
         name: String, unit: String, target: Double?,
-        block: suspend () -> Double
+        crossinline block: suspend () -> Double
     ): BenchmarkResult {
         val t0 = System.currentTimeMillis()
         val score = runCatching { kotlinx.coroutines.runBlocking { block() } }.getOrDefault(0.0)

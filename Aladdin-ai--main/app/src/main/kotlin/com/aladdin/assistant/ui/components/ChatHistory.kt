@@ -118,6 +118,7 @@ private fun DrawerConversationItem(
 }
 
 // ─── Conversation Summary Card ─────────────────────────────────────────────────
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationSummaryBottomSheet(
     conversation: Conversation,

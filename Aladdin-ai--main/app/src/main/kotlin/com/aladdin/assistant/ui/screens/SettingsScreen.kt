@@ -54,7 +54,7 @@ fun SettingsScreen(
                     onClick = { showProviderSheet = true }
                 )
                 SettingsItem(
-                    icon = Icons.Outlined.Model_training,
+                    icon = Icons.Outlined.ModelTraining,
                     title = "Model",
                     subtitle = settings.aiModel,
                     onClick = {}
@@ -151,7 +151,7 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.updateSettings(settings.copy(notificationsEnabled = it)) }
                 )
                 SettingsSwitch(
-                    icon = Icons.Outlined.VibrationMode,
+                    icon = Icons.Outlined.Vibration,
                     title = "Haptic Feedback",
                     checked = settings.hapticFeedback,
                     onCheckedChange = { viewModel.updateSettings(settings.copy(hapticFeedback = it)) }
@@ -190,7 +190,7 @@ fun SettingsScreen(
             // ── Background ─────────────────────────────────────────────────
             SettingsSection("Background Assistant") {
                 SettingsSwitch(
-                    icon = Icons.Outlined.BackgroundApp,
+                    icon = Icons.Outlined.Apps,
                     title = "Background Mode",
                     subtitle = "Run Aladdin in the background",
                     checked = settings.backgroundAssistant,
