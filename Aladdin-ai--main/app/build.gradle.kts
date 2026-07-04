@@ -134,6 +134,7 @@ dependencies {
     implementation(project(":voice-core"))
     implementation(project(":internet"))
     implementation(project(":vision-system"))
+    implementation(project(":reliability-system"))
 
     // ─── Core desugaring (API < 26 back-compat) ──────────────────────────────
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
@@ -173,6 +174,10 @@ dependencies {
 
     // Compose testing
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // ─── Security / Biometric ─────────────────────────────────────────────
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // ─── AndroidX Core ──────────────────────────────────────────────────────
     implementation("androidx.core:core-ktx:1.13.1")
@@ -218,12 +223,15 @@ dependencies {
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
     implementation("com.google.mlkit:object-detection:17.0.2")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.mlkit:face-detection:16.1.7")
     implementation("com.google.mlkit:image-labeling:17.0.9")
+    implementation("com.google.mlkit:pose-detection:18.0.0-beta5")
     implementation("com.google.mlkit:pose-detection-accurate:18.0.0-beta5")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // ─── Gemini AI ────────────────────────────────────────────────────────
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
@@ -239,6 +247,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
 
     // ─── JavaMail ────────────────────────────────────────────────────────
     implementation("com.sun.mail:android-mail:1.6.7")

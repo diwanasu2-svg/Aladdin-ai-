@@ -63,7 +63,7 @@ class JarvisService : LifecycleService() {
     // ─── Internal state ───────────────────────────────────────────────────────
     private var wakeLock: PowerManager.WakeLock? = null
     private var tts: TextToSpeech? = null
-    private var mediaSession: androidx.media.session.MediaSessionCompat? = null
+    private var mediaSession: android.support.v4.media.session.MediaSessionCompat? = null
     private val screenReceiver = ScreenStateReceiver()
     private var isScreenOff = false
 

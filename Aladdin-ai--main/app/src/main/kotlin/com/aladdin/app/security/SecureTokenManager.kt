@@ -143,6 +143,23 @@ class SecureTokenManager @Inject constructor(
         }
     }
 
+    // ── Synchronous wrappers for use in non-suspend contexts (e.g. OkHttp Interceptors) ──
+    // OkHttp's Interceptor.intercept() runs on a background thread but is not a suspend
+    // function, so we bridge to the suspend token APIs with runBlocking.
+    fun getAccessToken(): String? = kotlinx.coroutines.runBlocking { getValidAccessToken() }
+
+    fun refreshAccessToken(): String? = kotlinx.coroutines.runBlocking {
+        val encRefresh = prefs.getString(KEY_REFRESH, null)
+        if (encRefresh == null) {
+            Log.w(TAG, "refreshAccessToken: no refresh token stored")
+            return@runBlocking null
+        }
+        // No dedicated refresh endpoint is wired here; getValidAccessToken() already
+        // triggers refreshToken(refreshUrl) internally when a refreshUrl is supplied
+        // by the caller elsewhere. Return the (possibly still valid) current token.
+        getValidAccessToken()
+    }
+
     // ── Clear tokens (logout) ─────────────────────────────────────────────────
     fun clearTokens() {
         prefs.edit().remove(KEY_ACCESS).remove(KEY_REFRESH).remove(KEY_EXPIRY).apply()

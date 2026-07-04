@@ -1,6 +1,7 @@
 package com.aladdin.performance.threading
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Runs ML inference on dedicated threads (normal priority).

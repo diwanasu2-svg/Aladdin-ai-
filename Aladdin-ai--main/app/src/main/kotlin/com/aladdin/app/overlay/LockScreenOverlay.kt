@@ -86,7 +86,7 @@ class LockScreenOverlay @Inject constructor(
     fun updateState(state: ConversationState) {
         tvStatus?.text = when (state) {
             is ConversationState.Listening  -> "Listening…"
-            is ConversationState.Processing -> "Thinking…"
+            is ConversationState.Thinking   -> "Thinking…"
             is ConversationState.Speaking   -> "Speaking…"
             else                            -> "Tap mic to speak"
         }

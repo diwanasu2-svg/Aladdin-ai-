@@ -40,16 +40,16 @@ class ProductionHardening @Inject constructor(private val context: Context) {
                     EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
             } catch (e: Exception) {
-                Log.e(TAG, "EncryptedPrefs failed — using plain fallback: \${e.message}")
+                Log.e(TAG, "EncryptedPrefs failed — using plain fallback: ${e.message}")
                 context.getSharedPreferences("aladdin_secure_fb", Context.MODE_PRIVATE)
             }
         }
         return _prefs!!
     }
 
-    fun storeApiKey(name: String, key: String) { encryptedPrefs.edit().putString("k_\$name", key).apply() }
-    fun retrieveApiKey(name: String): String = encryptedPrefs.getString("k_\$name", "") ?: ""
-    fun deleteApiKey(name: String) { encryptedPrefs.edit().remove("k_\$name").apply() }
+    fun storeApiKey(name: String, key: String) { encryptedPrefs.edit().putString("k_$name", key).apply() }
+    fun retrieveApiKey(name: String): String = encryptedPrefs.getString("k_$name", "") ?: ""
+    fun deleteApiKey(name: String) { encryptedPrefs.edit().remove("k_$name").apply() }
 
     // Root detection
     fun isRooted() = listOf("/sbin/su","/system/bin/su","/system/xbin/su","/data/local/bin/su").any { java.io.File(it).exists() }.also { if (it) Log.w(TAG, "Device is rooted") }
@@ -69,8 +69,8 @@ class ProductionHardening @Inject constructor(private val context: Context) {
             .addInterceptor { chain ->
                 val r = chain.request()
                 // Allow LAN (Ollama) and localhost; enforce HTTPS for all others
-                if (r.url.scheme != "https" && !r.url.host.matches(Regex("(192\.168|10\.|172\.(1[6-9]|2\d|3[01])).*")) && r.url.host != "localhost")
-                    throw IOException("HTTPS required. Blocked cleartext to \${r.url.host}")
+                if (r.url.scheme != "https" && !r.url.host.matches(Regex("(192\\.168|10\\.|172\\.(1[6-9]|2\\d|3[01])).*")) && r.url.host != "localhost")
+                    throw IOException("HTTPS required. Blocked cleartext to ${r.url.host}")
                 chain.proceed(r)
             }.build()
     }
@@ -83,7 +83,7 @@ class ProductionHardening @Inject constructor(private val context: Context) {
         if (isDeveloperMode()) warnings += "Developer mode enabled"
         val debug = try { context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0 } catch (_: Exception) { false }
         if (debug) warnings += "Debug build — not for production"
-        Log.i(TAG, "Audit: \${issues.size} issues, \${warnings.size} warnings")
+        Log.i(TAG, "Audit: ${issues.size} issues, ${warnings.size} warnings")
         return AuditResult(issues.isEmpty(), issues, warnings)
     }
 }

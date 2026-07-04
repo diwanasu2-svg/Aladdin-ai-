@@ -91,7 +91,7 @@ class AladdinForegroundService : LifecycleService() {
             ACTION_PROCESS_INPUT -> {
                 val input = intent.getStringExtra(EXTRA_USER_INPUT) ?: return START_STICKY
                 serviceScope.launch {
-                    orchestrator.processUserInput(input)
+                    orchestrator.submitText(input)
                 }
             }
             else -> {
@@ -113,7 +113,7 @@ class AladdinForegroundService : LifecycleService() {
         Log.d(TAG, "onDestroy")
         isRunning = false
         serviceScope.cancel()
-        orchestrator.shutdown()
+        orchestrator.release()
         releaseWakeLock()
         super.onDestroy()
     }
@@ -123,20 +123,23 @@ class AladdinForegroundService : LifecycleService() {
     private fun bootOrchestrator() {
         serviceScope.launch {
             try {
-                orchestrator.start()
+                orchestrator.initialise()
                 Log.i(TAG, "Orchestrator started — full pipeline active")
             } catch (e: Exception) {
                 Log.e(TAG, "Orchestrator start failed: ${e.message}", e)
             }
         }
 
-        // Wire wake-word → orchestrator pipeline
+        // Note: JarvisOrchestrator manages its own internal wake-word listening
+        // (via its WakeWordEngine) once initialise() is called above. This
+        // service-level WakeWordDetector is only used to keep the foreground
+        // notification responsive to wake events; it does not drive the
+        // orchestrator directly (no such API exists on JarvisOrchestrator).
         wakeWordDetector.startListening()
         wakeWordDetector.wakeEvents
             .onEach { event ->
                 Log.d(TAG, "Wake word '${event.keyword}' detected (conf=${event.confidence})")
                 updateNotification("Listening…")
-                orchestrator.onWakeWordDetected(event)
             }
             .launchIn(serviceScope)
     }
@@ -144,8 +147,8 @@ class AladdinForegroundService : LifecycleService() {
     // ─── Orchestrator state observer ──────────────────────────────────────────
 
     private fun observeOrchestratorState() {
-        orchestrator.statusFlow
-            .onEach { status -> updateNotification(status) }
+        orchestrator.assistantStateFlow
+            .onEach { state -> updateNotification(state.name) }
             .launchIn(lifecycleScope)
     }
 

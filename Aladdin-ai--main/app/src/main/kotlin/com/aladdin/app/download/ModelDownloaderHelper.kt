@@ -7,8 +7,12 @@ import com.aladdin.voicecore.models.ModelDownloader
 import com.aladdin.voicecore.models.ModelSpec
 import com.aladdin.voicecore.models.ArchiveType
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,6 +55,22 @@ class ModelDownloaderHelper @Inject constructor(
     }
 
     private val downloader = ModelDownloader(context)
+    private val helperScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Fire-and-forget convenience entry point for app startup (e.g. Application.onCreate()).
+     * Launches [downloadModels] on an internal background scope and just logs progress,
+     * since callers in non-suspend contexts can't await it directly.
+     */
+    fun ensureModelsPresent() {
+        helperScope.launch {
+            downloadModels(
+                onProgress = { name, percent -> Log.d(TAG, "ensureModelsPresent: $name $percent%") },
+                onComplete = { Log.i(TAG, "ensureModelsPresent: all required models ready") },
+                onError = { err -> Log.w(TAG, "ensureModelsPresent: $err") }
+            )
+        }
+    }
 
     fun areAllModelsReady(): Boolean =
         ALL_MODELS.all { ModelDownloader.isModelReady(context, it) }
