@@ -65,7 +65,10 @@ android {
         // APK built on GitHub Actions gets a different random signature,
         // which makes installing an update over a previous build fail with
         // a generic "App not installed" error on the device.
-        create("debug") {
+        // NOTE: the Android Gradle Plugin already auto-creates a "debug"
+        // signing config, so we must reconfigure it via getByName(), not
+        // create() (which throws "SigningConfig ... already exists").
+        getByName("debug") {
             storeFile     = rootProject.file("keystore/debug.keystore")
             storePassword = "android"
             keyAlias      = "androiddebugkey"
@@ -231,7 +234,7 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
 
-    // ─── ML Kit ─────────────────────────────────────────────────────────[...]
+    // ─── ML Kit ─────────────────────────────────────────────────────────
     implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
@@ -269,7 +272,7 @@ dependencies {
     // ─── Image loading ──────────────────────────────────────────────────────
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // ─── TFLite ─────────────────────────────────────────────────────────[...]
+    // ─── TFLite ─────────────────────────────────────────────────────────
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-api:2.14.0")
     implementation("org.tensorflow:tensorflow-lite-gpu:2.14.0")
