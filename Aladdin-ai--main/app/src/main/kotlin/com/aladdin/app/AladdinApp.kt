@@ -1,6 +1,7 @@
 package com.aladdin.app
 
 import android.app.Application
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.work.Configuration
@@ -21,11 +22,18 @@ class AladdinApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: androidx.hilt.work.HiltWorkerFactory
 
+    init {
+        // Installed in the constructor / init block so it is active before
+        // Hilt's generated super.onCreate() runs (Hilt performs dependency
+        // injection there, and a binding/injection failure would otherwise
+        // crash the process before our logger got a chance to attach).
+        installCrashLogger()
+    }
+
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Aladdin starting")
 
-        installCrashLogger()
         initWorkManager()
         initNotificationChannels()
         initFirebase()
@@ -33,30 +41,45 @@ class AladdinApp : Application(), Configuration.Provider {
         initModelDownloader()
     }
 
-    // ── Crash logging (diagnostic aid — writes full stack trace to Downloads) ──
+    // ── Crash logging (diagnostic aid) ──────────────────────────────────────
     //
-    // Purpose: capture the exact reason the app dies on launch/at runtime, so it
-    // can be diagnosed without needing adb/logcat access on the device.
+    // Purpose: capture the exact reason the app dies on launch/at runtime, so
+    // it can be diagnosed without needing adb/logcat access on the device.
+    //
+    // Strategy (in order of reliability):
+    //  1. Show an on-screen crash report via CrashActivity — this does not
+    //     depend on any storage permission or scoped-storage quirks, so it
+    //     works on every Android version/OEM.
+    //  2. Also best-effort write the report to Downloads and to app-private
+    //     storage as a backup, in case anyone wants the raw file later.
     private fun installCrashLogger() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                writeCrashLog(thread, throwable)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to write crash log: ${e.message}")
+                val report = buildReport(thread, throwable)
+                Log.e(TAG, "Uncaught exception:\n$report")
+                runCatching { writeCrashLog(report) }
+                    .onFailure { Log.e(TAG, "Failed to write crash log file: ${it.message}") }
+                runCatching { launchCrashActivity(report) }
+                    .onFailure { Log.e(TAG, "Failed to launch CrashActivity: ${it.message}") }
+            } catch (e: Throwable) {
+                Log.e(TAG, "Crash logger itself failed: ${e.message}")
             } finally {
+                // Give CrashActivity a brief moment to actually start before
+                // the default handler tears the process down.
+                try { Thread.sleep(300) } catch (_: InterruptedException) {}
                 defaultHandler?.uncaughtException(thread, throwable)
             }
         }
     }
 
-    private fun writeCrashLog(thread: Thread, throwable: Throwable) {
+    private fun buildReport(thread: Thread, throwable: Throwable): String {
         val sw = java.io.StringWriter()
         throwable.printStackTrace(java.io.PrintWriter(sw))
         val timestamp = java.text.SimpleDateFormat(
             "yyyy-MM-dd_HH-mm-ss", java.util.Locale.US
         ).format(java.util.Date())
-        val content = buildString {
+        return buildString {
             appendLine("Aladdin crash report")
             appendLine("Time: $timestamp")
             appendLine("Thread: ${thread.name}")
@@ -66,6 +89,22 @@ class AladdinApp : Application(), Configuration.Provider {
             appendLine()
             append(sw.toString())
         }
+    }
+
+    private fun launchCrashActivity(report: String) {
+        val intent = Intent(this, CrashActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            putExtra(CrashActivity.EXTRA_REPORT, report)
+        }
+        startActivity(intent)
+    }
+
+    private fun writeCrashLog(content: String) {
+        val timestamp = java.text.SimpleDateFormat(
+            "yyyy-MM-dd_HH-mm-ss", java.util.Locale.US
+        ).format(java.util.Date())
         val fileName = "Aladdin_crash_$timestamp.txt"
 
         // Public Downloads folder (visible in any file manager) — API 29+.
