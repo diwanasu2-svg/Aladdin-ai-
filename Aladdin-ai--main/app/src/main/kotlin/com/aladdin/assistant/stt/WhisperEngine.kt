@@ -19,7 +19,7 @@ class WhisperEngine(private val context: Context) {
         private const val TAG = "WhisperEngine"
         private const val MODEL_ASSET = "ggml-small.en.bin"
         private const val MODEL_SUBDIR = "models/whisper"
-        private const val MODEL_SHA256 = "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"
+        private const val MODEL_SHA256 = "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d"
 
         private var nativeAvailable = false
         init {

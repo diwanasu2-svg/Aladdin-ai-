@@ -42,7 +42,7 @@ class ModelDownloader(private val context: Context) {
             ModelSpec("whisper-small-en", "Whisper STT (small.en)",
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin",
                 "models/whisper", ArchiveType.RAW, destFileName = "ggml-small.en.bin", sizeMb = 488,
-                sha256 = "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b"),
+                sha256 = "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d"),
             // Item 9: MiniLM for embeddings
             ModelSpec("minilm-tflite", "MiniLM Embedding Model",
                 "https://huggingface.co/litert-community/all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2.tflite",
