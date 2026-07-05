@@ -93,14 +93,14 @@ class ModelDownloader(private val context: Context) {
                         val actual = computeSha256(tempFile)
                         if (!actual.equals(spec.sha256, ignoreCase = true)) {
                             tempFile.delete()
-                            throw IOException("SHA-256 mismatch for \${spec.id}: expected=\${spec.sha256} got=\$actual")
+                            throw IOException("SHA-256 mismatch for ${spec.id}: expected=${spec.sha256} got=$actual")
                         }
-                        Log.i(TAG, "SHA-256 verified: \${spec.id}")
+                        Log.i(TAG, "SHA-256 verified: ${spec.id}")
                     }
                     emit(DownloadProgress.Extracting(spec.name))
                     extract(spec, tempFile); tempFile.delete()
                     success = true
-                } catch (e: Exception) { lastError = e.message ?: "Unknown"; Log.e(TAG, "Attempt \$attempt failed for \${spec.id}: \$lastError") }
+                } catch (e: Exception) { lastError = e.message ?: "Unknown"; Log.e(TAG, "Attempt $attempt failed for ${spec.id}: $lastError") }
             }
             if (!success) { emit(DownloadProgress.Error(spec.id, lastError)); return@flow }
         }
@@ -111,14 +111,14 @@ class ModelDownloader(private val context: Context) {
 
     /** Item 28: HTTP Range resume download. */
     private suspend fun downloadWithResume(spec: ModelSpec): File = withContext(Dispatchers.IO) {
-        val temp = File(context.cacheDir, "\${spec.id}.part")
+        val temp = File(context.cacheDir, "${spec.id}.part")
         val existing = if (temp.exists()) temp.length() else 0L
         val reqBuilder = Request.Builder().url(spec.url)
-        if (existing > 0) reqBuilder.header("Range", "bytes=\$existing-")
+        if (existing > 0) reqBuilder.header("Range", "bytes=$existing-")
         val req = reqBuilder.build()
         client.newCall(req).execute().use { resp ->
             val code = resp.code
-            if (code != 200 && code != 206) throw IOException("HTTP \$code for \${spec.url}")
+            if (code != 200 && code != 206) throw IOException("HTTP $code for ${spec.url}")
             if (code == 200 && existing > 0) temp.delete()
             val body = resp.body ?: throw IOException("Empty body")
             val totalSize = body.contentLength() + (if (code == 206) existing else 0L)

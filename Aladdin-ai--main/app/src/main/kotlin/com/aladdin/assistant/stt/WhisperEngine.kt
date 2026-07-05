@@ -28,7 +28,7 @@ class WhisperEngine(private val context: Context) {
                 Log.i("WhisperEngine", "whisper.cpp native library loaded")
                 true
             } catch (e: UnsatisfiedLinkError) {
-                Log.e("WhisperEngine", "WHISPER JNI UNAVAILABLE: \${e.message}")
+                Log.e("WhisperEngine", "WHISPER JNI UNAVAILABLE: ${e.message}")
                 false
             }
         }
@@ -58,23 +58,23 @@ class WhisperEngine(private val context: Context) {
             onProgress?.invoke(80)
             ctxPtr = nativeInit(path)
             ready = ctxPtr != 0L
-            if (ready) Log.i(TAG, "Whisper ready (v\${try { nativeVersion() } catch(_:Exception){\"?\"}})")
+            if (ready) Log.i(TAG, "Whisper ready (v${try { nativeVersion() } catch(_:Exception){\"?\"}})")
             else Log.e(TAG, "nativeInit returned 0 — model may be corrupt")
             onProgress?.invoke(100)
             ready
-        } catch (e: Exception) { Log.e(TAG, "Init failed: \${e.message}", e); false }
+        } catch (e: Exception) { Log.e(TAG, "Init failed: ${e.message}", e); false }
     }
 
     /** Item 18: Real partial (streaming) transcription. */
     suspend fun transcribePartial(pcm: FloatArray): String = withContext(Dispatchers.Default) {
         if (!ready || ctxPtr == 0L) { Log.e(TAG, "Not ready — call initialise() first"); return@withContext "" }
-        try { nativeTranscribePartial(ctxPtr, pcm, pcm.size) } catch (e: Exception) { Log.e(TAG, "Partial err: \${e.message}"); "" }
+        try { nativeTranscribePartial(ctxPtr, pcm, pcm.size) } catch (e: Exception) { Log.e(TAG, "Partial err: ${e.message}"); "" }
     }
 
     /** Item 18: Real full transcription. */
     suspend fun transcribeFull(pcm: FloatArray): String = withContext(Dispatchers.Default) {
         if (!ready || ctxPtr == 0L) { Log.e(TAG, "Not ready — call initialise() first"); return@withContext "" }
-        try { nativeTranscribeFull(ctxPtr, pcm, pcm.size) } catch (e: Exception) { Log.e(TAG, "Full err: \${e.message}"); "" }
+        try { nativeTranscribeFull(ctxPtr, pcm, pcm.size) } catch (e: Exception) { Log.e(TAG, "Full err: ${e.message}"); "" }
     }
 
     fun release() {
@@ -108,6 +108,6 @@ class WhisperEngine(private val context: Context) {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { i -> val b = ByteArray(65536); var n: Int; while (i.read(b).also { n = it } != -1) digest.update(b, 0, n) }
         val hash = digest.digest().joinToString("") { "%02x".format(it) }
-        (hash == MODEL_SHA256).also { if (!it) Log.w(TAG, "SHA-256 mismatch: got=\$hash") }
+        (hash == MODEL_SHA256).also { if (!it) Log.w(TAG, "SHA-256 mismatch: got=$hash") }
     } catch (_: Exception) { true }
 }
