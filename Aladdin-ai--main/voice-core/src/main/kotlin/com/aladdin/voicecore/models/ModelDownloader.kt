@@ -56,9 +56,13 @@ class ModelDownloader(private val context: Context) {
                 "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt",
                 "models/minilm", ArchiveType.RAW, destFileName = "vocab.txt", sizeMb = 1),
             // Item 11/12: Wake-word TFLite
+            // Item 9c: the old "rhasspy/wyoming-openwakeword" v1.0.0 release tag/asset
+            // no longer exists (404). Switched to the upstream openWakeWord project's
+            // own GitHub release, which still hosts the real hey_jarvis tflite model.
             ModelSpec("wakeword-tflite", "Wake Word Neural Model",
-                "https://github.com/rhasspy/wyoming-openwakeword/releases/download/v1.0.0/hey_jarvis.tflite",
-                "models/wakeword", ArchiveType.RAW, destFileName = "aladdin_wakeword.tflite", sizeMb = 3),
+                "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/hey_jarvis_v0.1.tflite",
+                "models/wakeword", ArchiveType.RAW, destFileName = "aladdin_wakeword.tflite", sizeMb = 2,
+                sha256 = "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"),
             // Item 10: llama.cpp Q4 model
             ModelSpec("llama-3b-q4", "Llama 3.2 3B (Q4_K_M)",
                 "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",

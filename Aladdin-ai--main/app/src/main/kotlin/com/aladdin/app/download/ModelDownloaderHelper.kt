@@ -46,14 +46,18 @@ class ModelDownloaderHelper @Inject constructor(
                 sizeMb = 22,
                 sha256 = "0aac5b0b76be23ab94f065a7fab6e0daead5e57f6ff7d55e19a2641d6a81f276"
             ),
+            // Item 9c: the old "rhasspy/wyoming-openwakeword" v1.0.0 release tag/asset
+            // no longer exists (404). Switched to the upstream openWakeWord project's
+            // own GitHub release, which still hosts the real hey_jarvis tflite model.
             ModelSpec(
                 id = "wakeword-tflite",
                 name = "Wake Word Model",
-                url = "https://github.com/rhasspy/wyoming-openwakeword/releases/download/v1.0.0/hey_jarvis.tflite",
+                url = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/hey_jarvis_v0.1.tflite",
                 destDir = "models/wakeword",
                 archiveType = ArchiveType.RAW,
                 destFileName = "aladdin_wakeword.tflite",
-                sizeMb = 3
+                sizeMb = 2,
+                sha256 = "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"
             )
         )
     }
@@ -209,12 +213,16 @@ object ExtendedModelSpecs {
         sizeMb = 1900
     )
     // Item 11: Wake-word neural model
+    // Item 9c: the old "rhasspy/wyoming-openwakeword" v1.0.0 release tag/asset
+    // no longer exists (404). Switched to the upstream openWakeWord project's
+    // own GitHub release, which still hosts the real hey_jarvis tflite model.
     val WAKEWORD_TFLITE = ModelInfo(
         id = "wakeword-tflite",
         displayName = "Wake Word Neural Model",
-        url = "https://github.com/rhasspy/wyoming-openwakeword/releases/download/v1.0.0/hey_jarvis.tflite",
+        url = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/hey_jarvis_v0.1.tflite",
         destPath = "models/wakeword/aladdin_wakeword.tflite",
-        sizeMb = 3,
+        sizeMb = 2,
+        sha256 = "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2",
         required = true
     )
     // Item 12: Piper TTS voice model
