@@ -112,11 +112,22 @@ class ModelDownloader(private val context: Context) {
     /** Item 28: HTTP Range resume download. */
     private suspend fun downloadWithResume(spec: ModelSpec): File = withContext(Dispatchers.IO) {
         val temp = File(context.cacheDir, "${spec.id}.part")
-        val existing = if (temp.exists()) temp.length() else 0L
+        var existing = if (temp.exists()) temp.length() else 0L
         val reqBuilder = Request.Builder().url(spec.url)
         if (existing > 0) reqBuilder.header("Range", "bytes=$existing-")
-        val req = reqBuilder.build()
-        client.newCall(req).execute().use { resp ->
+        var resp = client.newCall(reqBuilder.build()).execute()
+        // Item 28c: a stale/oversized leftover .part file (e.g. from a previous
+        // corrupt attempt) can make the resume Range start at or past the real
+        // file length, which servers reject with 416 Range Not Satisfiable.
+        // Recover by discarding the stale file and restarting the download
+        // from scratch instead of failing outright.
+        if (resp.code == 416) {
+            resp.close()
+            temp.delete()
+            existing = 0L
+            resp = client.newCall(Request.Builder().url(spec.url).build()).execute()
+        }
+        resp.use { resp ->
             val code = resp.code
             if (code != 200 && code != 206) throw IOException("HTTP $code for ${spec.url}")
             if (code == 200 && existing > 0) temp.delete()
