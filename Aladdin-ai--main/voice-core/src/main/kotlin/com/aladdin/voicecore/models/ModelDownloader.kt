@@ -44,9 +44,13 @@ class ModelDownloader(private val context: Context) {
                 "models/whisper", ArchiveType.RAW, destFileName = "ggml-small.en.bin", sizeMb = 488,
                 sha256 = "c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d"),
             // Item 9: MiniLM for embeddings
+            // Item 9c: the old "litert-community/all-MiniLM-L6-v2" repo/file no longer
+            // resolves (HF now returns 401 for it — repo is gone/renamed), so this
+            // points at a verified public mirror of the same quantized TFLite model.
             ModelSpec("minilm-tflite", "MiniLM Embedding Model",
-                "https://huggingface.co/litert-community/all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2.tflite",
-                "models/minilm", ArchiveType.RAW, destFileName = "minilm-l6-v2.tflite", sizeMb = 22),
+                "https://huggingface.co/Nihal2000/all-MiniLM-L6-v2-quant.tflite/resolve/main/all-MiniLM-L6-v2-quant.tflite",
+                "models/minilm", ArchiveType.RAW, destFileName = "minilm-l6-v2.tflite", sizeMb = 22,
+                sha256 = "0aac5b0b76be23ab94f065a7fab6e0daead5e57f6ff7d55e19a2641d6a81f276"),
             // Item 9: MiniLM vocab
             ModelSpec("minilm-vocab", "MiniLM Vocab",
                 "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/vocab.txt",

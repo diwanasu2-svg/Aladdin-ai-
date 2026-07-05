@@ -33,14 +33,18 @@ class ModelDownloaderHelper @Inject constructor(
         private const val TAG = "ModelDownloaderHelper"
 
         val ALL_MODELS = ModelDownloader.DEFAULT_MODELS + listOf(
+            // Item 9c: the old "litert-community/all-MiniLM-L6-v2" repo/file no longer
+            // resolves (HF now returns 401 for it — repo is gone/renamed), so this
+            // points at a verified public mirror of the same quantized TFLite model.
             ModelSpec(
                 id = "minilm-tflite",
                 name = "MiniLM Embedding Model",
-                url = "https://huggingface.co/litert-community/all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2.tflite",
+                url = "https://huggingface.co/Nihal2000/all-MiniLM-L6-v2-quant.tflite/resolve/main/all-MiniLM-L6-v2-quant.tflite",
                 destDir = "models/minilm",
                 archiveType = ArchiveType.RAW,
                 destFileName = "minilm-l6-v2.tflite",
-                sizeMb = 22
+                sizeMb = 22,
+                sha256 = "0aac5b0b76be23ab94f065a7fab6e0daead5e57f6ff7d55e19a2641d6a81f276"
             ),
             ModelSpec(
                 id = "wakeword-tflite",
@@ -178,12 +182,16 @@ object ExtendedModelSpecs {
         required = true
     )
     // Item 9: MiniLM embeddings
+    // Item 9c: the old "litert-community/all-MiniLM-L6-v2" repo/file no longer
+    // resolves (HF now returns 401 for it — repo is gone/renamed), so this
+    // points at a verified public mirror of the same quantized TFLite model.
     val MINILM_TFLITE = ModelInfo(
         id = "minilm-tflite",
         displayName = "MiniLM Embedding Model",
-        url = "https://huggingface.co/litert-community/all-MiniLM-L6-v2/resolve/main/all-MiniLM-L6-v2.tflite",
+        url = "https://huggingface.co/Nihal2000/all-MiniLM-L6-v2-quant.tflite/resolve/main/all-MiniLM-L6-v2-quant.tflite",
         destPath = "models/minilm/minilm-l6-v2.tflite",
-        sizeMb = 22
+        sizeMb = 22,
+        sha256 = "0aac5b0b76be23ab94f065a7fab6e0daead5e57f6ff7d55e19a2641d6a81f276"
     )
     val MINILM_VOCAB = ModelInfo(
         id = "minilm-vocab",
