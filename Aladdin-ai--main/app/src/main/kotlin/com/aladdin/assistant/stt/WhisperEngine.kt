@@ -58,7 +58,7 @@ class WhisperEngine(private val context: Context) {
             onProgress?.invoke(80)
             ctxPtr = nativeInit(path)
             ready = ctxPtr != 0L
-            if (ready) Log.i(TAG, "Whisper ready (v${try { nativeVersion() } catch(_:Exception){\"?\"}})")
+            if (ready) Log.i(TAG, "Whisper ready (v${try { nativeVersion() } catch (_: Exception) { "?" }})")
             else Log.e(TAG, "nativeInit returned 0 — model may be corrupt")
             onProgress?.invoke(100)
             ready
