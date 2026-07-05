@@ -97,7 +97,14 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
     private val vadEngine      = VADEngine()
     private val rnNoise        = RNNoise()
     private val streamingTts   = StreamingTTS(context)
-    private val streamingLlm   = StreamingLLM()
+
+    // Bug fix (2026-07-05): StreamingLLM used to be built with zero args, which
+    // hardcoded it to a local Ollama server that most devices never actually run,
+    // and any Gemini/OpenAI key set in Settings was silently ignored. Now it
+    // reads the user's configured provider (Gemini API key preferred, else the
+    // configured Ollama host/port/model) via ProviderConfig.
+    private val providerConfig = com.aladdin.app.provider.ProviderConfig(context)
+    private val streamingLlm   = StreamingLLM(providerConfig)
     private val wakeWord       = WakeWordEngine(context)
     private val stt            = StreamingSTT(context, whisperEngine)
     private val bargeIn        = BargeInManager(vadEngine, streamingTts)
@@ -315,7 +322,22 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
                             importance = 0.5f
                         )
                     }
-                    is StreamingLLM.LlmEvent.Error -> { streamingTts.stopSpeaking(); startWakeWordListening() }
+                    is StreamingLLM.LlmEvent.Error -> {
+                        // Bug fix (2026-07-05): this used to fail completely silently —
+                        // no chat bubble, no toast, nothing — leaving the user staring
+                        // at a screen that never replies. Now the failure reason is
+                        // shown as an assistant message so it's actually visible.
+                        Log.e(TAG, "LLM error: ${event.message}", event.cause)
+                        addMsg(Message(
+                            UUID.randomUUID().toString(),
+                            "assistant",
+                            "⚠️ Couldn't reach the AI: ${event.message}\n" +
+                                "Add a Gemini API key in Settings (easiest — free at aistudio.google.com), " +
+                                "or make sure Ollama is running locally."
+                        ))
+                        streamingTts.stopSpeaking()
+                        startWakeWordListening()
+                    }
                     is StreamingLLM.LlmEvent.Done  -> {}
                 }
             }

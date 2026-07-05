@@ -20,6 +20,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.aladdin.app.provider.ProviderConfig
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -49,6 +50,18 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Bug fix (2026-07-05): there used to be NO way in the whole app to enter a
+    // Gemini/OpenAI/Ollama key — chat replies always silently failed because
+    // the LLM backend was hardcoded to a local Ollama server nobody had running.
+    // This wires the Settings screen to ProviderConfig (the same store the chat
+    // pipeline now reads from) so entering a key here actually fixes chat.
+    val providerConfig = remember { ProviderConfig(context) }
+    var geminiApiKey  by remember { mutableStateOf(providerConfig.geminiApiKey) }
+    var ollamaHost    by remember { mutableStateOf(providerConfig.ollamaHost) }
+    var ollamaPort    by remember { mutableStateOf(providerConfig.ollamaPort.toString()) }
+    var ollamaModel   by remember { mutableStateOf(providerConfig.ollamaModel) }
+    var providerSaveResult by remember { mutableStateOf<Boolean?>(null) }
 
     var wakeWordEnabled     by remember { mutableStateOf(true) }
     var continuousListening by remember { mutableStateOf(true) }
@@ -208,6 +221,69 @@ fun SettingsScreen(
                         Icon(Icons.Filled.RestartAlt, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Restart Background Service")
+                    }
+                }
+            }
+
+            // ── Bug fix (2026-07-05): AI Provider — this was completely missing.
+            // Without a Gemini key configured here (or Ollama running locally),
+            // chat had no way to ever get a reply.
+            item {
+                SettingsSection("AI Provider") {
+                    Text(
+                        "Chat replies need a working AI backend. Easiest: paste a free " +
+                            "Gemini API key from aistudio.google.com/apikey below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = geminiApiKey,
+                        onValueChange = { geminiApiKey = it },
+                        label = { Text("Gemini API Key") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Or, if you're running Ollama locally instead:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = ollamaHost, onValueChange = { ollamaHost = it },
+                            label = { Text("Host") }, singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = ollamaPort, onValueChange = { ollamaPort = it },
+                            label = { Text("Port") }, singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = ollamaModel, onValueChange = { ollamaModel = it },
+                        label = { Text("Ollama Model") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            providerConfig.geminiApiKey = geminiApiKey.trim()
+                            providerConfig.ollamaHost = ollamaHost.trim()
+                            providerConfig.ollamaPort = ollamaPort.toIntOrNull() ?: 11434
+                            providerConfig.ollamaModel = ollamaModel.trim()
+                            providerSaveResult = true
+                            Toast.makeText(context, "AI provider settings saved", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Save AI Provider Settings")
                     }
                 }
             }
