@@ -121,10 +121,21 @@ class ModelDownloader(private val context: Context) {
             if (code != 200 && code != 206) throw IOException("HTTP $code for ${spec.url}")
             if (code == 200 && existing > 0) temp.delete()
             val body = resp.body ?: throw IOException("Empty body")
-            val totalSize = body.contentLength() + (if (code == 206) existing else 0L)
+            val declaredLen = body.contentLength()
+            val totalSize = if (declaredLen >= 0) declaredLen + (if (code == 206) existing else 0L) else -1L
             FileOutputStream(temp, code == 206).use { out ->
                 val buf = ByteArray(65536); var n: Int
                 while (body.source().read(buf).also { n = it } != -1) out.write(buf, 0, n)
+            }
+            // Item 28b: verify the stream wasn't truncated by a dropped connection.
+            // Without this check, a premature/clean EOF from a reset socket would
+            // silently leave a partial file on disk, which is then wrongly treated
+            // as "downloaded" and fails the SHA-256 check with a confusing mismatch.
+            if (totalSize > 0 && temp.length() != totalSize) {
+                throw IOException(
+                    "Incomplete download for ${spec.id}: expected $totalSize bytes, got ${temp.length()} bytes " +
+                        "(connection likely dropped mid-transfer; will retry/resume)"
+                )
             }
         }
         temp
