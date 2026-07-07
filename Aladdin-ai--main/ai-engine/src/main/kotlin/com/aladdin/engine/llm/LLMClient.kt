@@ -1,9 +1,11 @@
 package com.aladdin.engine.llm
 
+import android.content.Context
 import android.util.Log
 import com.aladdin.engine.models.AIEngineConfig
 import com.aladdin.engine.models.ConversationMessage
 import com.aladdin.engine.models.LLMProvider
+import com.aladdin.llamacpp.LlamaCppEngine
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.GenerateContentResponse
 import com.google.ai.client.generativeai.type.content
@@ -37,6 +39,7 @@ import kotlin.math.pow
  */
 @Singleton
 class LLMClient @Inject constructor(
+    private val context: Context,
     private var config: AIEngineConfig
 ) {
     companion object {
@@ -53,6 +56,23 @@ class LLMClient @Inject constructor(
 
     private var geminiModel: GenerativeModel? = null
 
+    // ─── On-device offline inference (llama.cpp + local GGUF model) ─────────
+    // Lazily created; loading the model happens once via ensureLlamaCppReady().
+    private val llamaCpp: LlamaCppEngine by lazy { LlamaCppEngine(context) }
+    @Volatile private var llamaCppLoadAttempted = false
+
+    private suspend fun ensureLlamaCppReady(): Boolean {
+        if (llamaCpp.isReady) return true
+        if (llamaCppLoadAttempted) return llamaCpp.isReady
+        llamaCppLoadAttempted = true
+        val modelPath = config.llamaCppModelPath.ifBlank { llamaCpp.defaultModelPath() }
+        return llamaCpp.init(
+            modelPath = modelPath,
+            contextSize = config.llamaCppContextSize,
+            threads = config.llamaCppThreads
+        )
+    }
+
     // ─── Initialization ───────────────────────────────────────────────────────
 
     fun init(newConfig: AIEngineConfig = config) {
@@ -67,6 +87,11 @@ class LLMClient @Inject constructor(
                 }
             )
             Log.i(TAG, "Gemini model initialized")
+        } else if (config.llmProvider == LLMProvider.LLAMACPP) {
+            // Model load is deferred (suspend) — triggered lazily on first
+            // complete()/chat()/stream() call via ensureLlamaCppReady().
+            llamaCppLoadAttempted = false
+            Log.i(TAG, "LLM provider: LLAMACPP (on-device, offline, no Ollama needed)")
         } else {
             Log.i(TAG, "LLM provider: ${config.llmProvider}")
         }
@@ -80,6 +105,7 @@ class LLMClient @Inject constructor(
         systemPrompt: String = defaultSystemPrompt()
     ): String = withRetry {
         when (config.llmProvider) {
+            LLMProvider.LLAMACPP -> completeLlamaCpp(prompt, systemPrompt)
             LLMProvider.GEMINI -> completeGemini(prompt, systemPrompt)
             LLMProvider.OLLAMA -> completeOllama(prompt, systemPrompt)
             LLMProvider.STUB   -> completeStub(prompt)
@@ -92,6 +118,7 @@ class LLMClient @Inject constructor(
         systemPrompt: String = defaultSystemPrompt()
     ): String = withRetry {
         when (config.llmProvider) {
+            LLMProvider.LLAMACPP -> chatLlamaCpp(messages, systemPrompt)
             LLMProvider.GEMINI -> chatGemini(messages, systemPrompt)
             LLMProvider.OLLAMA -> chatOllama(messages, systemPrompt)
             LLMProvider.STUB   -> chatStub(messages)
@@ -104,6 +131,13 @@ class LLMClient @Inject constructor(
         systemPrompt: String = defaultSystemPrompt()
     ): Flow<String> = flow {
         when (config.llmProvider) {
+            LLMProvider.LLAMACPP -> {
+                if (!ensureLlamaCppReady()) { emit(completeStub(prompt)); return@flow }
+                llamaCpp.completeStreaming(
+                    buildLlamaCppPrompt(systemPrompt, prompt),
+                    maxTokens = config.llamaCppMaxTokens
+                ).collect { token -> emit(token) }
+            }
             LLMProvider.GEMINI -> {
                 val model = geminiModel ?: run { emit(completeStub(prompt)); return@flow }
                 val response = model.generateContentStream(
@@ -146,6 +180,38 @@ class LLMClient @Inject constructor(
     }
 
     fun estimateTokens(text: String): Int = (text.split("\\s+".toRegex()).size * 1.35).toInt()
+
+    /** Releases the native llama.cpp context (call from AIEngine/Application teardown). */
+    fun shutdown() {
+        if (llamaCpp.isReady) llamaCpp.shutdown()
+    }
+
+    // ─── llama.cpp (on-device, offline) ─────────────────────────────────────
+
+    private suspend fun completeLlamaCpp(prompt: String, systemPrompt: String): String {
+        if (!ensureLlamaCppReady()) return completeStub(prompt)
+        return llamaCpp.complete(buildLlamaCppPrompt(systemPrompt, prompt), config.llamaCppMaxTokens)
+    }
+
+    private suspend fun chatLlamaCpp(messages: List<ConversationMessage>, systemPrompt: String): String {
+        if (!ensureLlamaCppReady()) return chatStub(messages)
+        val history = messages.joinToString("\n") { m ->
+            val role = when (m.role) {
+                com.aladdin.engine.models.MessageRole.USER -> "User"
+                com.aladdin.engine.models.MessageRole.ASSISTANT -> "Assistant"
+                else -> "System"
+            }
+            "$role: ${m.content}"
+        }
+        val prompt = "$history\nAssistant:"
+        return llamaCpp.complete(buildLlamaCppPrompt(systemPrompt, prompt), config.llamaCppMaxTokens)
+    }
+
+    /** Gemma/Llama-style instruction prompt wrapper for local GGUF completion. */
+    private fun buildLlamaCppPrompt(systemPrompt: String, userPrompt: String): String =
+        "<start_of_turn>system\n$systemPrompt<end_of_turn>\n" +
+        "<start_of_turn>user\n$userPrompt<end_of_turn>\n" +
+        "<start_of_turn>model\n"
 
     // ─── Gemini ───────────────────────────────────────────────────────────────
 

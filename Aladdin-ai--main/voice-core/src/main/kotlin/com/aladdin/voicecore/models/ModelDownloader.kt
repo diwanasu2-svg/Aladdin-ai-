@@ -32,10 +32,20 @@ class ModelDownloader(private val context: Context) {
             ModelSpec("vosk-small-en", "Vosk Small English",
                 "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
                 "models/vosk-model", ArchiveType.ZIP, sizeMb = 40),
-            ModelSpec("piper-voice-lessac", "Piper Voice (en_US lessac)",
+            // Item 10b: Piper MALE voice — "en_US-ryan-medium" — this is the
+            // default TTS voice for the fully-offline pipeline (Mic → STT →
+            // llama.cpp → Piper male voice → Speaker).
+            ModelSpec("piper-voice-ryan", "Piper Voice (en_US ryan, male)",
+                "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx",
+                "models/piper", ArchiveType.RAW, destFileName = "en_US-ryan-medium.onnx", sizeMb = 63),
+            ModelSpec("piper-voice-ryan-config", "Piper Voice Config (male)",
+                "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json",
+                "models/piper", ArchiveType.RAW, destFileName = "en_US-ryan-medium.onnx.json", sizeMb = 1),
+            // Optional secondary female voice, kept available as a fallback/alternative.
+            ModelSpec("piper-voice-lessac", "Piper Voice (en_US lessac, female, optional)",
                 "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx",
                 "models/piper", ArchiveType.RAW, destFileName = "en_US-lessac-medium.onnx", sizeMb = 63),
-            ModelSpec("piper-voice-lessac-config", "Piper Voice Config",
+            ModelSpec("piper-voice-lessac-config", "Piper Voice Config (female, optional)",
                 "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json",
                 "models/piper", ArchiveType.RAW, destFileName = "en_US-lessac-medium.onnx.json", sizeMb = 1),
             // Item 8: Whisper model
@@ -63,18 +73,28 @@ class ModelDownloader(private val context: Context) {
                 "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/hey_jarvis_v0.1.tflite",
                 "models/wakeword", ArchiveType.RAW, destFileName = "aladdin_wakeword.tflite", sizeMb = 2,
                 sha256 = "14bff778604985e1b5c19f0f7bbe477a69cf281d8db34b232b3b972411f710e2"),
-            // Item 10: llama.cpp Q4 model
-            ModelSpec("llama-3b-q4", "Llama 3.2 3B (Q4_K_M)",
+            // Item 10: llama.cpp GGUF model — default is gemma3:1b (small, fast,
+            // phone-friendly). Runs fully on-device via the :llama-cpp module —
+            // no Ollama server, no internet needed after this one-time download.
+            ModelSpec("gemma3-1b-q4", "Gemma 3 1B Instruct (Q4_K_M)",
+                "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
+                "models/llama", ArchiveType.RAW, destFileName = "gemma-3-1b-it.Q4_K_M.gguf", sizeMb = 806),
+            // Optional larger model, kept available if the device has headroom —
+            // not downloaded by default (see DEFAULT_MODELS vs ALL_MODELS below).
+            ModelSpec("llama-3b-q4", "Llama 3.2 3B (Q4_K_M, optional)",
                 "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
                 "models/llama", ArchiveType.RAW, destFileName = "llama-3.2-3b-instruct.Q4_K_M.gguf", sizeMb = 1900)
         )
+
+        /** Everything actually downloaded by default for the offline voice pipeline. */
+        val OFFLINE_PIPELINE_MODELS = DEFAULT_MODELS.filterNot { it.id == "llama-3b-q4" }
 
         fun isModelReady(context: Context, spec: ModelSpec): Boolean {
             val dir = File(context.filesDir, spec.destDir)
             return dir.exists() && dir.listFiles()?.isNotEmpty() == true
         }
 
-        fun areAllModelsReady(context: Context) = DEFAULT_MODELS.all { isModelReady(context, it) }
+        fun areAllModelsReady(context: Context) = OFFLINE_PIPELINE_MODELS.all { isModelReady(context, it) }
     }
 
     private val client = OkHttpClient.Builder()
@@ -83,8 +103,14 @@ class ModelDownloader(private val context: Context) {
         .retryOnConnectionFailure(true)
         .build()
 
-    /** Item 27: Download all missing models with retry logic. */
-    fun downloadAll(models: List<ModelSpec> = DEFAULT_MODELS): Flow<DownloadProgress> = flow {
+    /**
+     * Item 27: Download all missing models with retry logic.
+     * Defaults to [OFFLINE_PIPELINE_MODELS] — everything needed for the
+     * Mic → STT → llama.cpp (gemma3:1b) → Piper (male voice) → Speaker
+     * pipeline, and nothing more. After this completes once, the app runs
+     * with zero network access.
+     */
+    fun downloadAll(models: List<ModelSpec> = OFFLINE_PIPELINE_MODELS): Flow<DownloadProgress> = flow {
         val missing = models.filter { !isModelReady(context, it) }
         if (missing.isEmpty()) { emit(DownloadProgress.Done); return@flow }
         emit(DownloadProgress.Started(missing.size))

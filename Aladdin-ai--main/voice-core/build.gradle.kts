@@ -48,6 +48,9 @@ android {
 }
 
 dependencies {
+    // On-device offline TTS (Piper JNI, male voice) — used by TTSEngine
+    implementation(project(":piper-tts"))
+
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")

@@ -42,7 +42,8 @@ data class VoiceCoreConfig(
 
     // ─── TTS ─────────────────────────────────────────────────────────────────
     val ttsModelPath: String = "models/piper",
-    val ttsVoice: String = "en_US-lessac-medium",
+    // Male voice by default (Piper "ryan" voice). Swap via VoiceCoreConfig(ttsVoice = "...")
+    val ttsVoice: String = "en_US-ryan-medium",
     val ttsSpeakingRate: Float = 1.0f,
     val ttsStreamingEnabled: Boolean = true,        // token-by-token speaking
 

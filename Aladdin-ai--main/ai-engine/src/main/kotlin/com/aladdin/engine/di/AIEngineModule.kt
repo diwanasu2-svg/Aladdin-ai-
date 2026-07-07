@@ -1,5 +1,7 @@
 package com.aladdin.engine.di
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.aladdin.engine.autonomy.AutonomyEngine
 import com.aladdin.engine.engine.AIEngine
 import com.aladdin.engine.intent.IntentClassifier
@@ -27,11 +29,12 @@ import javax.inject.Singleton
  * All components are singletons — the engine maintains stateful
  * conversation context, goal tracking, and in-memory indexes.
  *
- * To configure the engine at startup:
- *   engine.init(AIEngineConfig(geminiApiKey = BuildConfig.GEMINI_API_KEY))
+ * To configure the engine at startup (default: fully offline, on-device):
+ *   engine.init(AIEngineConfig(llmProvider = LLMProvider.LLAMACPP))
  *
- * To switch LLM provider at runtime:
+ * To switch LLM provider at runtime (optional, needs network):
  *   engine.init(AIEngineConfig(llmProvider = LLMProvider.OLLAMA))
+ *   engine.init(AIEngineConfig(llmProvider = LLMProvider.GEMINI, geminiApiKey = "..."))
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -40,7 +43,9 @@ object AIEngineModule {
     @Provides
     @Singleton
     fun provideDefaultConfig(): AIEngineConfig = AIEngineConfig(
-        llmProvider = LLMProvider.STUB,    // replaced at runtime via engine.init()
+        // LLAMACPP = on-device llama.cpp + local GGUF model (e.g. gemma-3-1b-it),
+        // no Ollama server and no internet connection required.
+        llmProvider = LLMProvider.LLAMACPP,
         maxContextTokens = 4096,
         maxRetries = 3,
         autoExecute = true,
@@ -50,7 +55,10 @@ object AIEngineModule {
 
     @Provides
     @Singleton
-    fun provideLLMClient(config: AIEngineConfig): LLMClient = LLMClient(config)
+    fun provideLLMClient(
+        @ApplicationContext context: Context,
+        config: AIEngineConfig
+    ): LLMClient = LLMClient(context, config)
 
     @Provides
     @Singleton

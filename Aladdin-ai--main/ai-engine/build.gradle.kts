@@ -40,6 +40,8 @@ android {
 dependencies {
     // Internal modules
     implementation(project(":smart-memory"))
+    // On-device offline LLM (llama.cpp JNI) — powers LLMProvider.LLAMACPP
+    implementation(project(":llama-cpp"))
 
     // Kotlin
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

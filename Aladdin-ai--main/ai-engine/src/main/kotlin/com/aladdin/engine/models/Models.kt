@@ -214,10 +214,16 @@ enum class AIErrorCode {
 // ─── AI Engine Config ─────────────────────────────────────────────────────────
 
 data class AIEngineConfig(
-    val llmProvider: LLMProvider = LLMProvider.GEMINI,
+    val llmProvider: LLMProvider = LLMProvider.LLAMACPP,
     val geminiApiKey: String = "",
     val ollamaBaseUrl: String = "http://127.0.0.1:11434",
     val ollamaModel: String = "mistral",
+    // ─── llama.cpp (on-device, offline GGUF inference — no Ollama needed) ───
+    /** Absolute path to a local .gguf file, e.g. filesDir/models/llama/gemma-3-1b-it.Q4_K_M.gguf */
+    val llamaCppModelPath: String = "",
+    val llamaCppContextSize: Int = 2048,
+    val llamaCppThreads: Int = 4,
+    val llamaCppMaxTokens: Int = 256,
     val maxContextTokens: Int = 4096,
     val maxRetries: Int = 3,
     val baseRetryDelayMs: Long = 500,
@@ -231,4 +237,10 @@ data class AIEngineConfig(
     val clarificationThreshold: Float = 0.55f
 )
 
-enum class LLMProvider { GEMINI, OLLAMA, STUB }
+/**
+ * LLAMACPP — fully on-device, offline inference via the :llama-cpp module
+ * (llama.cpp JNI + a local GGUF model). This is the default provider so the
+ * app works with no internet connection and no Ollama server.
+ * GEMINI / OLLAMA remain available as optional cloud/network providers.
+ */
+enum class LLMProvider { LLAMACPP, GEMINI, OLLAMA, STUB }

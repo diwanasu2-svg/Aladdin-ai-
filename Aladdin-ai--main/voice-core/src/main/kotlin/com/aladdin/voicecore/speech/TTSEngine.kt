@@ -6,6 +6,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.util.Log
+import com.aladdin.pipertts.PiperTtsEngine
 import com.aladdin.voicecore.audio.AudioFocusManager
 import com.aladdin.voicecore.models.ErrorCode
 import com.aladdin.voicecore.models.VoiceCoreConfig
@@ -25,6 +26,13 @@ import java.io.File
 //  • [stop] drains the queue instantly → clean barge-in support.
 //  • [resumeForNewUtterance] resets state so next call works after barge-in.
 //  • Piper streaming path unchanged; added Android TTS fallback path.
+//
+// Phase 3 (offline male-voice pipeline): prefers the JNI-based PiperTtsEngine
+// (:piper-tts, libpiper_bridge.so, default male voice "en_US-ryan-medium")
+// over the legacy subprocess `piper` binary path. Android 10+ blocks
+// executing arbitrary binaries outside nativeLibraryDir, so the JNI path is
+// what actually works on-device offline; the subprocess and Android-TTS
+// paths remain only as fallbacks for older setups.
 
 class TTSEngine(
     private val context: Context,
@@ -51,6 +59,17 @@ class TTSEngine(
 
     @Volatile private var isSpeaking = false
     @Volatile private var stopRequested = false
+
+    // ── Offline male-voice Piper JNI engine (preferred path) ──────────────────
+    private val piperJni = PiperTtsEngine(context)
+    @Volatile private var piperJniLoadAttempted = false
+
+    private suspend fun ensurePiperJniReady(): Boolean {
+        if (piperJni.isReady) return true
+        if (piperJniLoadAttempted) return piperJni.isReady
+        piperJniLoadAttempted = true
+        return piperJni.init(voice = config.ttsVoice)
+    }
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -110,6 +129,7 @@ class TTSEngine(
         scope.cancel()
         audioTrack?.release()
         audioTrack = null
+        if (piperJni.isReady) piperJni.shutdown()
     }
 
     // ── Processor loop ────────────────────────────────────────────────────────
@@ -147,12 +167,26 @@ class TTSEngine(
     }
 
     private suspend fun streamPiperSentence(text: String, track: AudioTrack) {
+        // Preferred: JNI Piper (offline, male voice, works on Android 10+)
+        if (ensurePiperJniReady()) {
+            val pcm = piperJni.synthesizeToPcm(text, config.ttsSpeakingRate)
+            if (pcm.isNotEmpty()) {
+                track.write(pcm, 0, pcm.size)
+                _events.emit(VoiceCoreEvent.TTSChunk(text, ByteArray(pcm.size * 2)))
+                return
+            }
+        }
+
+        // Legacy fallback: subprocess `piper` binary (only works if the app has
+        // placed an executable at this path and the OS allows exec — not
+        // guaranteed on Android 10+; kept for older/rooted setups).
         val piperBin = "${context.filesDir}/${config.ttsModelPath}/piper"
         val voiceModel = "${context.filesDir}/${config.ttsModelPath}/${config.ttsVoice}.onnx"
         val voiceConfig = "${context.filesDir}/${config.ttsModelPath}/${config.ttsVoice}.onnx.json"
 
         if (!File(piperBin).exists()) {
-            // Android TTS fallback
+            // Final fallback: Android's built-in TTS engine (still offline on
+            // most devices, but not the requested male Piper voice).
             androidTtsFallback(text)
             return
         }
