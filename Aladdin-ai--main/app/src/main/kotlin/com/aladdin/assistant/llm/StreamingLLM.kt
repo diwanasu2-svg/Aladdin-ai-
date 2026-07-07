@@ -1,7 +1,10 @@
 package com.aladdin.assistant.llm
 
+import android.content.Context
 import android.util.Log
 import com.aladdin.app.provider.ProviderConfig
+import com.aladdin.llamacpp.LlamaCppEngine
+import com.aladdin.voicecore.models.ModelDownloader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import okhttp3.*
@@ -9,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -26,19 +30,45 @@ import java.util.concurrent.TimeUnit
  * is why typed messages like "hello" never got a reply and no error was
  * visible either.
  *
- * Fix: [ProviderConfig] is now read to decide which backend to use. If a
- * Gemini API key is configured (the default/preferred provider), the real
- * Gemini `generateContent` REST API is called. Otherwise it falls back to
- * an OpenAI-compatible endpoint (Ollama / LM Studio / cloud) using whatever
- * host/port/model the user configured, defaulting to 127.0.0.1:11434.
+ * Bug fix (2026-07-07): removed the dependency on Ollama entirely as the
+ * default/fallback path — the user does not want to run any server (local
+ * or remote) to chat with Aladdin. The app now ships a fully on-device
+ * llama.cpp engine (see :llama-cpp) that runs a bundled/downloaded GGUF
+ * model (`ModelDownloader`'s "llama-3b-q4" spec) directly inside the APK's
+ * process, no network and no external server required. Priority order:
+ *   1. Gemini (only if the user explicitly added an API key in Settings)
+ *   2. Local on-device llama.cpp (the default — always available, offline)
+ *   3. Ollama / OpenAI-compatible HTTP endpoint (only if the user explicitly
+ *      switches `preferredProvider` to "ollama" in Settings — opt-in only)
  */
 class StreamingLLM(
     private val providerConfig: ProviderConfig? = null,
+    private val context: Context? = null,
     private val baseUrl: String = "http://127.0.0.1:11434/v1",
     private val apiKey: String = "ollama",
     private val model: String = "llama3.2"
 ) {
     companion object { private const val TAG = "StreamingLLM" }
+
+    // ── On-device llama.cpp (default backend — no server, fully offline) ──────
+    private val localEngine: LlamaCppEngine? = context?.let { LlamaCppEngine(it) }
+    @Volatile private var localInitAttempted = false
+
+    private suspend fun ensureLocalModelReady(): Boolean {
+        val engine = localEngine ?: return false
+        if (engine.isReady) return true
+        if (localInitAttempted) return engine.isReady
+        localInitAttempted = true
+        val ctx = context ?: return false
+        val spec = ModelDownloader.DEFAULT_MODELS.first { it.id == "llama-3b-q4" }
+        val modelFile = File(File(ctx.filesDir, spec.destDir), spec.destFileName ?: "model.gguf")
+        if (!modelFile.exists()) {
+            Log.w(TAG, "On-device GGUF model not downloaded yet at ${modelFile.absolutePath} — " +
+                "trigger ModelDownloader.downloadAll() from Settings/first-run to fetch it once.")
+            return false
+        }
+        return engine.init(modelPath = modelFile.absolutePath)
+    }
 
     sealed class LlmEvent {
         data class Token(val text: String) : LlmEvent()
@@ -63,12 +93,73 @@ class StreamingLLM(
         history.add(mapOf("role" to "user", "content" to userMessage))
 
         val useGemini = providerConfig?.isGeminiConfigured == true
-        if (useGemini) {
-            emitAll(streamGemini())
-        } else {
-            emitAll(streamOpenAiCompatible())
+        val useOllamaExplicitly = providerConfig?.preferredProvider == "ollama"
+
+        when {
+            useGemini -> emitAll(streamGemini())
+            useOllamaExplicitly -> emitAll(streamOpenAiCompatible())
+            else -> emitAll(streamLocal())
         }
     }.flowOn(Dispatchers.IO)
+
+    // ── Local on-device llama.cpp (default — no Ollama, no server, no internet) ─
+
+    private fun streamLocal(): Flow<LlmEvent> = flow {
+        if (localEngine == null) {
+            // No Context was supplied to this StreamingLLM instance — fall back
+            // to whatever HTTP endpoint is configured rather than crashing.
+            emitAll(streamOpenAiCompatible())
+            return@flow
+        }
+        val ready = ensureLocalModelReady()
+        if (!ready) {
+            emit(LlmEvent.Error(
+                "On-device AI model isn't downloaded yet. Open Settings → Download " +
+                    "Models to fetch the offline model once (no internet needed afterwards), " +
+                    "or add a Gemini API key in Settings to use the cloud instead."
+            ))
+            return@flow
+        }
+        val systemPrompt = history.firstOrNull { it["role"] == "system" }?.get("content")
+        val userTurns = history.filter { it["role"] != "system" }
+        val prompt = buildString {
+            userTurns.forEach { msg ->
+                append(if (msg["role"] == "assistant") "Assistant: " else "User: ")
+                append(msg["content"]); append('\n')
+            }
+            append("Assistant: ")
+        }
+        val fullPrompt = if (systemPrompt != null) "$systemPrompt\n\n$prompt" else prompt
+
+        val full = StringBuilder()
+        val sentBuf = StringBuilder()
+        val terminators = setOf('.', '!', '?')
+        try {
+            localEngine.completeStreaming(fullPrompt).collect { token ->
+                if (token.isEmpty()) return@collect
+                full.append(token); sentBuf.append(token)
+                emit(LlmEvent.Token(token))
+                if (token.any { it in terminators }) {
+                    val next = sentBuf.toString().indexOfLast { it in terminators }
+                    val sent = sentBuf.substring(0, next + 1).trim()
+                    sentBuf.delete(0, next + 1)
+                    if (sent.isNotBlank()) emit(LlmEvent.SentenceComplete(sent))
+                }
+            }
+            val rem = sentBuf.toString().trim()
+            if (rem.isNotBlank()) emit(LlmEvent.SentenceComplete(rem))
+            val fullText = full.toString().trim()
+            if (fullText.isBlank()) {
+                emit(LlmEvent.Error("On-device model returned an empty response. Try again."))
+                return@flow
+            }
+            history.add(mapOf("role" to "assistant", "content" to fullText))
+            emit(LlmEvent.FullResponse(fullText))
+            emit(LlmEvent.Done)
+        } catch (e: Exception) {
+            emit(LlmEvent.Error("On-device AI error: ${e.message}", e))
+        }
+    }.flowOn(Dispatchers.Default)
 
     // ── Gemini (Google Generative Language API) ───────────────────────────────
 

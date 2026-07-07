@@ -146,6 +146,7 @@ android {
 dependencies {
     // ─── Internal modules ─────────────────────────────────────────────────────
     implementation(project(":ai-engine"))
+    implementation(project(":llama-cpp"))   // On-device GGUF inference — no Ollama, no server, fully offline
     implementation(project(":smart-memory"))
     implementation(project(":tool-system"))
     implementation(project(":voice-core"))

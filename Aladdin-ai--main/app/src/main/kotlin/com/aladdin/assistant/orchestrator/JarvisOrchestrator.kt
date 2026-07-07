@@ -104,7 +104,10 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
     // reads the user's configured provider (Gemini API key preferred, else the
     // configured Ollama host/port/model) via ProviderConfig.
     private val providerConfig = com.aladdin.app.provider.ProviderConfig(context)
-    private val streamingLlm   = StreamingLLM(providerConfig)
+    // Bug fix (2026-07-07): pass Context so StreamingLLM can run the on-device
+    // llama.cpp engine by default instead of requiring a local/remote Ollama
+    // server — see StreamingLLM's class doc for the full provider priority.
+    private val streamingLlm   = StreamingLLM(providerConfig, context)
     private val wakeWord       = WakeWordEngine(context)
     private val stt            = StreamingSTT(context, whisperEngine)
     private val bargeIn        = BargeInManager(vadEngine, streamingTts)

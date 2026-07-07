@@ -99,11 +99,16 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
         set(v) { prefs.edit { putBoolean("smtp_tls", v) } }
     val isSmtpConfigured get() = smtpUser.isNotBlank() && smtpPassword.isNotBlank()
 
+    // Item 27b: On-device (llama.cpp, bundled in the APK — no server, no
+    // internet at inference time). This is the default so the assistant
+    // works out of the box without any setup; users can still opt into
+    // Gemini (add an API key) or explicitly switch to "ollama" here.
     var preferredProvider: String
-        get() = prefs.getString("pref_provider", "gemini") ?: "gemini"
+        get() = prefs.getString("pref_provider", "local") ?: "local"
         set(v) { prefs.edit { putString("pref_provider", v) } }
 
     fun getConfiguredProviders() = buildList {
+        add("local") // always available — bundled on-device model
         if (isGeminiConfigured) add("gemini")
         if (isOpenAiConfigured) add("openai")
         if (isAnthropicConfigured) add("anthropic")
