@@ -23,6 +23,18 @@ import kotlin.math.sqrt
  *
  * Requires CONSECUTIVE_DETECTIONS hits before firing to suppress false positives.
  * Stub heuristic active when model file is absent.
+ *
+ * Bug fix (2026-07-07): saying "Aladdin" never woke the app up. Root cause —
+ * the neural wake-word model (`wake_word_aladdin.tflite` + the native
+ * `libwakeword.so`) isn't bundled in this build, so `nativeAvailable` is
+ * always false and every detection fell back to [heuristic]. But
+ * [heuristic] can only ever return 0.35 at best, while detection was
+ * compared against [DETECTION_THRESHOLD] = 0.80 — a score that's
+ * mathematically impossible to reach in stub mode. So voice wake-up was
+ * completely dead, 100% of the time, regardless of how the user spoke.
+ * Now the stub path is compared against its own, reachable threshold, and
+ * the energy gate is loosened slightly so normal speaking volume actually
+ * produces frames instead of being dropped by [ENERGY_GATE_RMS].
  */
 class WakeWordEngine(private val context: Context) {
     companion object {
@@ -31,8 +43,11 @@ class WakeWordEngine(private val context: Context) {
         private const val FRAME_SIZE = 512
         private const val WINDOW_SAMPLES = SAMPLE_RATE
         private const val DETECTION_THRESHOLD = 0.80f
+        // Reachable threshold for the crude energy-pattern stub used when no
+        // real neural model is bundled (see class doc above).
+        private const val HEURISTIC_DETECTION_THRESHOLD = 0.30f
         private const val CONSECUTIVE_DETECTIONS = 2
-        private const val ENERGY_GATE_RMS = 0.008f
+        private const val ENERGY_GATE_RMS = 0.004f
         private const val MODEL_ASSET = "wake_word_aladdin.tflite"
         private var nativeAvailable = false
         init {
@@ -61,6 +76,9 @@ class WakeWordEngine(private val context: Context) {
     private val _flow = MutableSharedFlow<WakeWordEvent>(extraBufferCapacity = 8)
     val wakeWordFlow: SharedFlow<WakeWordEvent> = _flow.asSharedFlow()
 
+    /** True once we know whether we're running the real model or the stub. */
+    val isUsingRealModel: Boolean get() = nativeAvailable && nativeCtxPtr != 0L
+
     suspend fun initialise(): Boolean = withContext(Dispatchers.IO) {
         if (nativeAvailable) {
             try {
@@ -69,7 +87,12 @@ class WakeWordEngine(private val context: Context) {
                 Log.d(TAG, "Wake word model loaded")
                 nativeCtxPtr != 0L
             } catch (e: Exception) { Log.e(TAG, "Model init error: ${e.message}", e); false }
-        } else true
+        } else {
+            Log.w(TAG, "No bundled wake-word model — using energy-pattern stub with " +
+                "threshold=$HEURISTIC_DETECTION_THRESHOLD. For reliable wake-word detection, " +
+                "tap the mic button instead of relying on saying \"Aladdin\".")
+            true
+        }
     }
 
     fun startListening() {
@@ -99,6 +122,7 @@ class WakeWordEngine(private val context: Context) {
         rec.startRecording()
         val ring = FloatArray(WINDOW_SAMPLES); var writePos = 0
         val frameBuf = ShortArray(FRAME_SIZE); var consecutive = 0
+        val threshold = if (nativeAvailable && nativeCtxPtr != 0L) DETECTION_THRESHOLD else HEURISTIC_DETECTION_THRESHOLD
 
         try {
             while (isListening.get() && currentCoroutineContext().isActive) {
@@ -112,7 +136,7 @@ class WakeWordEngine(private val context: Context) {
                     val window = buildWindow(ring, writePos)
                     val score = infer(window)
                     _flow.tryEmit(WakeWordEvent.ScoreUpdate(score))
-                    if (score >= DETECTION_THRESHOLD) {
+                    if (score >= threshold) {
                         consecutive++
                         if (consecutive >= CONSECUTIVE_DETECTIONS) {
                             Log.d(TAG, "WAKE WORD DETECTED! score=${"%.3f".format(score)}")
@@ -141,7 +165,7 @@ class WakeWordEngine(private val context: Context) {
     private fun heuristic(w: FloatArray): Float {
         val cs = w.size / 5
         val e = (0 until 5).map { i -> w.slice(i * cs until (i + 1) * cs).sumOf { abs(it.toDouble()) } / cs }
-        val peaks = e[0] > 0.02 && e[2] > 0.02 && e[4] > 0.02
+        val peaks = e[0] > 0.015 && e[2] > 0.015 && e[4] > 0.015
         val dips   = e[1] < e[0] && e[3] < e[2]
         return if (peaks && dips) 0.35f else 0.05f
     }

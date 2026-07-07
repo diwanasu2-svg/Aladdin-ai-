@@ -7,11 +7,24 @@
 // Mirrors the shape of llama.cpp's own examples/llama.android JNI bridge,
 // trimmed down to what Aladdin's LlamaCppEngine.kt needs: init / complete /
 // completeStreaming / free.
+//
+// Bug fix (2026-07-07): the raw "User: ...\nAssistant: ..." prompt format has
+// no way of telling the model to stop after ONE reply — with only the model's
+// own end-of-generation token as a stop condition, gemma/llama-family models
+// happily keep hallucinating an entire fake back-and-forth conversation
+// ("User: what is ...\nAssistant: ...\nUser: ...") until `maxTokens` runs out.
+// That is exactly what made replies feel like they "hang" for minutes and
+// never really finish — the app was waiting for ~256 tokens of a fictional
+// conversation instead of ~20-40 tokens for one real reply. We now detect a
+// small set of turn-marker stop sequences as they stream out of the model and
+// cut generation off immediately once one appears, same idea as llama.cpp's
+// own `--reverse-prompt` / stop-sequence handling.
 
 #include <jni.h>
 #include <android/log.h>
 #include <string>
 #include <vector>
+#include <algorithm>
 #include <thread>
 
 #include "llama.h"
@@ -27,6 +40,45 @@ struct AladdinLlamaContext {
     llama_sampler *sampler = nullptr;
     int n_ctx = 2048;
 };
+
+namespace {
+
+// Turn-marker / role-leak stop sequences. Any of these appearing in the
+// model's OWN generated text (never in the prompt, which is stripped before
+// we start scanning) means it has started hallucinating a new conversational
+// turn instead of ending its answer — so we stop right there.
+const std::vector<std::string> &stopMarkers() {
+    static const std::vector<std::string> markers = {
+        "\nUser:", "\nuser:", "\nUSER:", "User:",
+        "\nAssistant:", "\nassistant:", "\nASSISTANT:", "Assistant:",
+        "\nHuman:", "Human:",
+        "<end_of_turn>", "<|im_end|>", "<|user|>", "<|assistant|>", "<|end|>"
+    };
+    return markers;
+}
+
+size_t longestMarkerLen() {
+    static size_t len = [] {
+        size_t m = 0;
+        for (auto &s : stopMarkers()) m = std::max(m, s.size());
+        return m;
+    }();
+    return len;
+}
+
+// Finds the earliest occurrence of any stop marker at/after `searchFrom`.
+// Returns std::string::npos if none found.
+size_t findEarliestStop(const std::string &full, size_t searchFrom) {
+    size_t best = std::string::npos;
+    for (auto &marker : stopMarkers()) {
+        size_t from = searchFrom > marker.size() ? searchFrom - marker.size() : 0;
+        size_t p = full.find(marker, from);
+        if (p != std::string::npos && (best == std::string::npos || p < best)) best = p;
+    }
+    return best;
+}
+
+} // namespace
 
 extern "C" {
 
@@ -103,7 +155,7 @@ Java_com_aladdin_llamacpp_LlamaCppEngine_nativeComplete(
 
     llama_batch batch = llama_batch_get_one(tokens.data(), (int) tokens.size());
 
-    std::string result;
+    std::string full;
     for (int i = 0; i < maxTokens; i++) {
         if (llama_decode(aladdinCtx->ctx, batch) != 0) {
             LOGE("llama_decode failed");
@@ -115,18 +167,35 @@ Java_com_aladdin_llamacpp_LlamaCppEngine_nativeComplete(
 
         char buf[256];
         int n = llama_token_to_piece(vocab, newToken, buf, sizeof(buf), 0, true);
-        if (n > 0) result.append(buf, n);
+        if (n > 0) {
+            full.append(buf, n);
+            // Stop the moment the model starts hallucinating a new turn
+            // ("\nUser:", "\nAssistant:", etc.) instead of ending its reply.
+            size_t stopPos = findEarliestStop(full, full.size() >= (size_t) n ? full.size() - n : 0);
+            if (stopPos != std::string::npos) {
+                full.erase(stopPos);
+                break;
+            }
+        }
 
         batch = llama_batch_get_one(&newToken, 1);
     }
 
-    return env->NewStringUTF(result.c_str());
+    // Trim trailing whitespace left over from truncation.
+    while (!full.empty() && (full.back() == '\n' || full.back() == ' ')) full.pop_back();
+
+    return env->NewStringUTF(full.c_str());
 }
 
 // Streaming variant: invokes a Kotlin callback (LlamaCppEngine$TokenCallback)
 // once per generated token so the AI response can start speaking (via Piper)
 // before the whole completion has finished — matching the low-latency
 // Mic -> STT -> LLM -> TTS pipeline the app targets.
+//
+// Tokens are held back briefly (a small tail buffer, `longestMarkerLen()`
+// characters wide) before being forwarded to the callback/TTS, so that a
+// stop marker split across multiple tokens can still be caught and silenced
+// before it's ever spoken aloud or shown in the chat bubble.
 JNIEXPORT void JNICALL
 Java_com_aladdin_llamacpp_LlamaCppEngine_nativeCompleteStreaming(
         JNIEnv *env, jobject thiz,
@@ -152,6 +221,22 @@ Java_com_aladdin_llamacpp_LlamaCppEngine_nativeCompleteStreaming(
 
     llama_batch batch = llama_batch_get_one(tokens.data(), (int) tokens.size());
 
+    std::string full;          // everything generated so far
+    size_t emitted = 0;        // how much of `full` has already gone to the callback
+    const size_t holdBack = longestMarkerLen();
+
+    auto flushUpTo = [&](size_t upTo) {
+        if (upTo > emitted) {
+            std::string chunk = full.substr(emitted, upTo - emitted);
+            emitted = upTo;
+            if (!chunk.empty()) {
+                jstring jToken = env->NewStringUTF(chunk.c_str());
+                env->CallBooleanMethod(callback, onTokenMethod, jToken);
+                env->DeleteLocalRef(jToken);
+            }
+        }
+    };
+
     for (int i = 0; i < maxTokens; i++) {
         if (llama_decode(aladdinCtx->ctx, batch) != 0) break;
 
@@ -161,13 +246,31 @@ Java_com_aladdin_llamacpp_LlamaCppEngine_nativeCompleteStreaming(
         char buf[256];
         int n = llama_token_to_piece(vocab, newToken, buf, sizeof(buf), 0, true);
         if (n > 0) {
-            jstring jToken = env->NewStringUTF(std::string(buf, n).c_str());
-            jboolean keepGoing = env->CallBooleanMethod(callback, onTokenMethod, jToken);
-            env->DeleteLocalRef(jToken);
-            if (!keepGoing) break;
+            full.append(buf, n);
+
+            size_t stopPos = findEarliestStop(full, emitted);
+            if (stopPos != std::string::npos) {
+                // Flush only the safe part before the marker, then stop —
+                // the hallucinated "User:"/"Assistant:" turn is never sent.
+                flushUpTo(stopPos);
+                batch = llama_batch_get_one(&newToken, 1); // keep var usage tidy
+                break;
+            }
+
+            // No marker (yet). Keep the last `holdBack` chars unsent in case
+            // a marker is still forming across the next token(s).
+            if (full.size() > emitted + holdBack) {
+                flushUpTo(full.size() - holdBack);
+            }
         }
 
         batch = llama_batch_get_one(&newToken, 1);
+    }
+
+    // Generation ended naturally (EOG / max tokens) with no stop marker hit —
+    // flush whatever safe text is still pending.
+    if (findEarliestStop(full, emitted) == std::string::npos) {
+        flushUpTo(full.size());
     }
 }
 
