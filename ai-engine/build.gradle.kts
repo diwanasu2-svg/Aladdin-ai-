@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -38,10 +38,15 @@ android {
 }
 
 dependencies {
-    // Kotlin - use DSL helper to match project's Kotlin version (2.0.21)
-    implementation(kotlin("stdlib"))
+    // Internal modules
+    implementation(project(":smart-memory"))
+    // On-device offline LLM (llama.cpp JNI) — powers LLMProvider.LLAMACPP
+    implementation(project(":llama-cpp"))
+
+    // Kotlin
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
 
     // AndroidX

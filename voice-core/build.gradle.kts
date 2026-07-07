@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
@@ -36,6 +36,10 @@ android {
         unitTests.isReturnDefaultValues = true
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -44,12 +48,15 @@ android {
 }
 
 dependencies {
+    // On-device offline TTS (Piper JNI, male voice) — used by TTSEngine
+    implementation(project(":piper-tts"))
+
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
     // Vosk offline speech recognition / wake word
-    implementation("net.java.dev.jna:jna:5.14.0")
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
     implementation("com.alphacephei:vosk-android:0.3.47")
 
     // Porcupine wake word (AI-Rhino) — optional, add your own key
