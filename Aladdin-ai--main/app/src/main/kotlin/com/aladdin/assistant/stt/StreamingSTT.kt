@@ -5,6 +5,7 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import com.aladdin.assistant.noise.RNNoise
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -14,10 +15,19 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Captures microphone audio and emits partial + final transcripts in real-time.
  * Whisper.cpp is used for on-device inference via [WhisperEngine].
  * Silence detection fires at 350 ms (configurable via [silenceTimeoutMs]).
+ *
+ * E2E test fix (2026-07-08): [RNNoise] existed and was initialised by
+ * JarvisOrchestrator but nothing ever called processFrame/processBuffer on
+ * it — raw, un-denoised mic audio went straight to Whisper. Now optionally
+ * accepted here and applied to every captured chunk before it's buffered or
+ * transcribed, so noise suppression is actually part of the pipeline (falls
+ * back to the built-in spectral-subtraction path when librnnoise.so isn't
+ * bundled, same as before — this only changes *whether* it's called).
  */
 class StreamingSTT(
     private val context: Context,
-    private val whisperEngine: WhisperEngine
+    private val whisperEngine: WhisperEngine,
+    private val rnNoise: RNNoise? = null
 ) {
     companion object {
         private const val TAG = "StreamingSTT"
@@ -78,7 +88,8 @@ class StreamingSTT(
             while (isRecording.get() && currentCoroutineContext().isActive) {
                 val read = rec.read(buf, 0, CHUNK_SAMPLES)
                 if (read <= 0) { delay(5); continue }
-                val chunk = buf.copyOf(read)
+                var chunk = buf.copyOf(read)
+                if (rnNoise != null) chunk = denoise(chunk)
                 val rms = rms(chunk)
                 if (rms > 150f) lastVoiceMs = System.currentTimeMillis()
 
@@ -115,6 +126,15 @@ class StreamingSTT(
         val out = FloatArray(rollingBufferSamples); var i = 0
         for (c in rollingBuffer) for (s in c) { if (i >= out.size) break; out[i++] = s / 32768f }
         return out
+    }
+
+    /** Runs [rnNoise] over a Short PCM chunk, converting to/from the -1..1 float domain it expects. */
+    private fun denoise(chunk: ShortArray): ShortArray {
+        val floatIn = FloatArray(chunk.size) { chunk[it] / 32768f }
+        val floatOut = try { rnNoise!!.processBuffer(floatIn) } catch (e: Exception) {
+            Log.w(TAG, "Denoise failed, using raw audio: ${e.message}"); floatIn
+        }
+        return ShortArray(floatOut.size) { (floatOut[it] * 32768f).toInt().coerceIn(-32768, 32767).toShort() }
     }
 
     private fun rms(frame: ShortArray): Float {

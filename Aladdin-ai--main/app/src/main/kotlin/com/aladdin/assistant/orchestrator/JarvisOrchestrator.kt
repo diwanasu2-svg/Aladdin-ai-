@@ -128,7 +128,11 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
     // server — see StreamingLLM's class doc for the full provider priority.
     private val streamingLlm   = StreamingLLM(providerConfig, context)
     private val wakeWord       = WakeWordEngine(context)
-    private val stt            = StreamingSTT(context, whisperEngine)
+    // E2E test fix (2026-07-08): rnNoise used to be created + initialised here
+    // but never actually handed to anything that captures audio, so noise
+    // suppression never ran. Now passed into StreamingSTT so it's applied to
+    // every captured chunk (see StreamingSTT's class doc for detail).
+    private val stt            = StreamingSTT(context, whisperEngine, rnNoise)
     private val bargeIn        = BargeInManager(vadEngine, streamingTts)
 
     // ── Phase 5: Multi-Agent Team ─────────────────────────────────────────────

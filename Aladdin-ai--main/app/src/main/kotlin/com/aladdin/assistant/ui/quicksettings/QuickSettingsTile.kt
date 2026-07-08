@@ -8,7 +8,14 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import androidx.annotation.RequiresApi
-import com.aladdin.assistant.ui.MainActivity
+// E2E test fix (2026-07-08): this used to import the orphaned
+// com.aladdin.assistant.ui.MainActivity class, which is NOT declared as an
+// <activity> in AndroidManifest.xml (only com.aladdin.app.MainActivity is —
+// see the app/service migration notes in app/migration/MigrationLog.md).
+// Any Intent built with that class threw ActivityNotFoundException at
+// runtime, so tapping this Quick Settings Tile crashed instead of opening
+// the app. Point it at the real, manifest-registered MainActivity.
+import com.aladdin.app.MainActivity
 
 // ─── Phase 6 Item 5: Quick Settings Tile — Fixed & Enhanced ──────────────────
 // Changes applied:
