@@ -54,8 +54,27 @@ import java.util.UUID
 class JarvisOrchestrator @Inject constructor(@ApplicationContext private val context: Context) {
     companion object {
         private const val TAG = "JarvisOrchestrator"
-        private const val SYSTEM_PROMPT = "You are Aladdin, a fast AI assistant. " +
-            "Respond concisely in 2-3 short sentences. No markdown."
+        // Model-quality pass (2026-07-08): the old prompt ("You are Aladdin, a fast
+        // AI assistant. Respond concisely in 2-3 short sentences. No markdown.") gave
+        // no personality, no guidance on handling ambiguity/uncertainty, and actively
+        // discouraged the assistant from ever asking a clarifying question — all of
+        // which made responses feel like a generic chatbot instead of a personal
+        // assistant that actually understands context. Rewritten for a genuine
+        // Jarvis-like feel while keeping voice-reply constraints (short, no markdown,
+        // since this is read aloud by TTS, not displayed as rich text).
+        private const val SYSTEM_PROMPT =
+            "You are Aladdin — a sharp, personable voice assistant running on the user's own phone. " +
+            "You are speaking out loud (TTS), not writing a document, so:\n" +
+            "- Reply in plain conversational sentences. Never use markdown, bullet points, headers, or asterisks.\n" +
+            "- Default to 1-3 short sentences. Only go longer when the user explicitly asks for detail, " +
+            "a list, or an explanation — then it's fine to be thorough.\n" +
+            "- Use the conversation history and any \"relevant context\" notes you're given to stay consistent " +
+            "and avoid repeating yourself or re-asking things the user already told you.\n" +
+            "- If a request is genuinely ambiguous and guessing wrong would waste the user's time, ask one short " +
+            "clarifying question instead of assuming. Otherwise, just answer — don't ask permission to help.\n" +
+            "- If you don't know something or can't do it (e.g. no internet/tool access right now), say so plainly " +
+            "in one sentence rather than inventing an answer.\n" +
+            "- Be warm and a little witty when it fits naturally, but never at the cost of being clear and useful."
 
         /** Heuristic — route to multi-agent team when input looks complex. */
         private val AGENT_TRIGGER_KEYWORDS = listOf(
@@ -307,8 +326,16 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
     private fun routeToLlm(text: String) {
         _stateFlow.value = AssistantState.PROCESSING
         val buffer = StringBuilder()
+        // Model-quality fix (2026-07-08): the multi-agent path (CoordinatorAgent)
+        // already pulls memoryAgent.semanticSearch() results into its reasoning, but
+        // this fast conversational path never did — so anything Aladdin "remembered"
+        // only actually surfaced for requests that happened to trigger the agent
+        // team. Most normal chat (the majority of turns) went through here with zero
+        // memory recall, so the assistant felt like it forgot everything between
+        // unrelated topics. Now both paths use memory.
+        val augmentedText = withRelevantMemory(text)
         llmJob = scope.launch {
-            streamingLlm.streamMessage(text).collect { event ->
+            streamingLlm.streamMessage(augmentedText).collect { event ->
                 when (event) {
                     is StreamingLLM.LlmEvent.Token -> {
                         buffer.append(event.text); _streamingFlow.value = buffer.toString()
@@ -381,6 +408,26 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun addMsg(m: Message) { _messagesFlow.value = _messagesFlow.value + m }
+
+    /**
+     * Prepends any relevant long/short-term memories to the user's text before it
+     * goes to the LLM — the chat bubble still shows the user's original words
+     * (added separately in onUtterance/submitText), this only affects what the
+     * model actually sees. Fails silently to the plain text on any error so a
+     * memory-lookup bug can never block the assistant from responding.
+     */
+    private fun withRelevantMemory(text: String): String {
+        val relevant = try {
+            memoryAgent.semanticSearch(text, topK = 3, minImportance = 0.3f)
+        } catch (e: Exception) {
+            Log.w(TAG, "Memory recall skipped: ${e.message}")
+            emptyList()
+        }
+        if (relevant.isEmpty()) return text
+        val memoryContext = relevant.joinToString("\n") { "- ${it.content}" }
+        return "Relevant context from earlier (use only if it actually helps, don't repeat it verbatim):\n" +
+            "$memoryContext\n\nUser: $text"
+    }
 
     fun release() {
         scope.cancel()

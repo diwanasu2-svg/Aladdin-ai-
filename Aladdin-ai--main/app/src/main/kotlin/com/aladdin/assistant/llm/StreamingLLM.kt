@@ -84,13 +84,26 @@ class StreamingLLM(
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val history = mutableListOf<Map<String, String>>()
+    // Model-quality fix (2026-07-08): this used to be a raw, unbounded
+    // mutableListOf<Map<String,String>> — every single turn of a conversation
+    // stayed in memory and got resent on every request forever. A fully built
+    // token-budget-aware trimmer (ConversationContextWindow, "Items 27-29") already
+    // existed in the codebase but nothing ever constructed or called it, so long
+    // conversations would eventually either blow past the model's context window
+    // (silent truncation / HTTP errors from Ollama, or Gemini rejecting the
+    // request) or just get slower and less coherent turn after turn as stale
+    // early messages diluted the model's attention. Now wired in for real.
+    private val contextWindow = com.aladdin.app.llm.ConversationContextWindow()
 
-    fun addSystemPrompt(prompt: String) { history.add(0, mapOf("role" to "system", "content" to prompt)) }
-    fun clearHistory() { history.clear() }
+    fun addSystemPrompt(prompt: String) { contextWindow.systemPrompt = prompt }
+    fun clearHistory() { contextWindow.clear() }
+
+    /** Non-system turns only, in order — used by providers that keep system separate. */
+    private val history: List<Map<String, String>>
+        get() = contextWindow.getHistory().map { mapOf("role" to it.role, "content" to it.content) }
 
     fun streamMessage(userMessage: String): Flow<LlmEvent> = flow {
-        history.add(mapOf("role" to "user", "content" to userMessage))
+        contextWindow.addUserMessage(userMessage)
 
         val useGemini = providerConfig?.isGeminiConfigured == true
         val useLocalExplicitly = providerConfig?.preferredProvider == "local"
@@ -120,8 +133,8 @@ class StreamingLLM(
             ))
             return@flow
         }
-        val systemPrompt = history.firstOrNull { it["role"] == "system" }?.get("content")
-        val userTurns = history.filter { it["role"] != "system" }
+        val systemPrompt = contextWindow.systemPrompt.ifBlank { null }
+        val userTurns = history
         val prompt = buildString {
             userTurns.forEach { msg ->
                 append(if (msg["role"] == "assistant") "Assistant: " else "User: ")
@@ -153,7 +166,7 @@ class StreamingLLM(
                 emit(LlmEvent.Error("On-device model returned an empty response. Try again."))
                 return@flow
             }
-            history.add(mapOf("role" to "assistant", "content" to fullText))
+            contextWindow.addAssistantMessage(fullText)
             emit(LlmEvent.FullResponse(fullText))
             emit(LlmEvent.Done)
         } catch (e: Exception) {
@@ -171,14 +184,13 @@ class StreamingLLM(
 
         val contents = JSONArray()
         history.forEach { msg ->
-            if (msg["role"] == "system") return@forEach // Gemini uses systemInstruction separately
             val role = if (msg["role"] == "assistant") "model" else "user"
             contents.put(JSONObject().apply {
                 put("role", role)
                 put("parts", JSONArray().put(JSONObject().put("text", msg["content"])))
             })
         }
-        val systemPrompt = history.firstOrNull { it["role"] == "system" }?.get("content")
+        val systemPrompt = contextWindow.systemPrompt.ifBlank { null }
 
         val payload = JSONObject().apply {
             put("contents", contents)
@@ -216,7 +228,7 @@ class StreamingLLM(
                 }
                 emit(LlmEvent.Token(text))
                 emit(LlmEvent.SentenceComplete(text))
-                history.add(mapOf("role" to "assistant", "content" to text))
+                contextWindow.addAssistantMessage(text)
                 emit(LlmEvent.FullResponse(text))
                 emit(LlmEvent.Done)
             }
@@ -267,7 +279,7 @@ class StreamingLLM(
                 val rem = sentBuf.toString().trim()
                 if (rem.isNotBlank()) emit(LlmEvent.SentenceComplete(rem))
                 val fullText = full.toString()
-                history.add(mapOf("role" to "assistant", "content" to fullText))
+                contextWindow.addAssistantMessage(fullText)
                 emit(LlmEvent.FullResponse(fullText))
                 emit(LlmEvent.Done)
             }
@@ -277,7 +289,11 @@ class StreamingLLM(
     }.flowOn(Dispatchers.IO)
 
     private fun buildJson(effectiveModel: String): String {
-        val msgs = JSONArray(); history.forEach { msgs.put(JSONObject(it)) }
+        val msgs = JSONArray()
+        if (contextWindow.systemPrompt.isNotBlank()) {
+            msgs.put(JSONObject(mapOf("role" to "system", "content" to contextWindow.systemPrompt)))
+        }
+        history.forEach { msgs.put(JSONObject(it)) }
         return JSONObject().apply {
             put("model", effectiveModel); put("messages", msgs)
             put("stream", true); put("temperature", 0.7); put("max_tokens", 1024)
