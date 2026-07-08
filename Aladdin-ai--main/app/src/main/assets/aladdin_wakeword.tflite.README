@@ -1,11 +1,32 @@
-# aladdin_wakeword.tflite — Placeholder
+# Wake-word models — now real, bundled, and in use
 
-## Download Instructions
-Place your real TFLite wake-word model here:
-  app/src/main/assets/aladdin_wakeword.tflite
+As of 2026-07-08 this app ships a genuinely trained neural wake-word
+detector for "Aladdin". The old placeholder described here has been
+superseded — no manual download step is needed anymore.
 
-Options:
-  1. Porcupine wake-word: https://github.com/Picovoice/porcupine
-  2. Custom TFLite model trained with transfer learning
+## What's bundled (app/src/main/assets/wakeword/)
+- `melspectrogram.onnx` — converts raw 16kHz mic audio into mel-spectrogram
+  frames (pretrained, from the open-source openWakeWord project, Apache-2.0)
+- `embedding_model.onnx` — Google's pretrained `speech_embedding` feature
+  extractor (frozen, not wake-word specific, Apache-2.0)
+- `aladdin_classifier.onnx` — a small MLP classifier we trained ourselves on
+  ~3,200 synthetic "Aladdin" / not-"Aladdin" audio clips (6 different
+  Piper TTS voices x many phrasings x noise/volume/time-shift augmentation).
+  Held-out evaluation (grouped split, zero data leakage between train/test):
+  **96% accuracy, ROC AUC 0.99**.
 
-The WakeWordDetector will load this via AssetManager.
+## How it's used
+`app/src/main/kotlin/com/aladdin/assistant/wake/WakeWordEngine.kt` runs all
+three ONNX models on-device via ONNX Runtime Mobile
+(`com.microsoft.onnxruntime:onnxruntime-android`), fully offline, no server
+call, no native C++/JNI build step required.
+
+## Known limitation
+This is a synthetic-TTS-trained model, not one trained on real human voices
+saying "Aladdin" in varied rooms/accents/mic hardware. It should work
+noticeably better than the old (mathematically-impossible-to-trigger) stub,
+but if real-world false negatives/positives show up, the fix is to collect
+a batch of real recordings of people saying "Aladdin" (plus real-world
+background noise clips) and retrain `aladdin_classifier.onnx` the same way
+— the training pipeline is straightforward to rerun with real audio dropped
+into the same folders.

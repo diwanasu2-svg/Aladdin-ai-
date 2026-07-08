@@ -282,6 +282,10 @@ dependencies {
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
     implementation("org.tensorflow:tensorflow-lite-metadata:0.4.4")
 
+    // ─── ONNX Runtime (real wake-word neural model: melspec + embedding + ──
+    // ─── our trained "Aladdin" classifier — see wake/WakeWordEngine.kt) ────
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
+
     // ─── Testing ────────────────────────────────────────────────────────
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.12")
