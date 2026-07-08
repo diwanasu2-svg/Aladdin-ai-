@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.aladdin.app.AladdinUiState
 import com.aladdin.app.ChatMessage
+import com.aladdin.app.ErrorAction
 import kotlinx.coroutines.delay
 
 // ─── Phase 2: Partial Transcript UI + Streaming Response Display ──────────────
@@ -40,7 +41,9 @@ fun ChatScreen(
     onSendMessage: (String) -> Unit,
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
-    onClearConversation: () -> Unit
+    onClearConversation: () -> Unit,
+    onDismissError: () -> Unit = {},
+    onErrorAction: (ErrorAction) -> Unit = {}
 ) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -101,6 +104,33 @@ fun ChatScreen(
             }
         }
 
+        // ─── Offline banner ───────────────────────────────────────────────────
+        // Reliability: NetworkMonitor was wired up but nothing ever showed its
+        // state to the user — you'd only find out something needed the internet
+        // when a feature silently failed. Now it's visible up front.
+        AnimatedVisibility(visible = uiState.isOffline) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.tertiaryContainer)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.CloudOff, contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "No internet — voice chat still works if your AI server is on the same WiFi. " +
+                        "Cloud features (news, web search) need a connection.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+        }
+
         // ─── Error banner ─────────────────────────────────────────────────────
         AnimatedVisibility(visible = uiState.errorMessage != null) {
             uiState.errorMessage?.let { error ->
@@ -108,12 +138,38 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Text(
-                        text = error,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text(
+                                text = error,
+                                modifier = Modifier.weight(1f),
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            IconButton(
+                                onClick = onDismissError,
+                                modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Close, contentDescription = "Dismiss",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        if (uiState.errorAction != ErrorAction.NONE) {
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = { onErrorAction(uiState.errorAction) }) {
+                                Text(
+                                    when (uiState.errorAction) {
+                                        ErrorAction.OPEN_APP_SETTINGS -> "Open Settings"
+                                        ErrorAction.RETRY_MODEL_DOWNLOAD -> "Retry"
+                                        ErrorAction.NONE -> ""
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

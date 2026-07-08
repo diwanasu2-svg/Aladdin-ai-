@@ -2,8 +2,10 @@ package com.aladdin.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aladdin.app.network.NetworkMonitor
 import com.aladdin.assistant.orchestrator.JarvisOrchestrator
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,6 +17,9 @@ data class ChatMessage(
     val isError: Boolean = false
 )
 
+/** What action (if any) the "Retry"/action button on the error banner should do. */
+enum class ErrorAction { NONE, OPEN_APP_SETTINGS, RETRY_MODEL_DOWNLOAD }
+
 data class AladdinUiState(
     val messages: List<ChatMessage> = emptyList(),
     val isListening: Boolean = false,
@@ -25,16 +30,22 @@ data class AladdinUiState(
     val statusText: String = "Say \"Aladdin\" to wake",
     val downloadingModel: String? = null,
     val downloadProgress: Int = 0,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val errorAction: ErrorAction = ErrorAction.NONE,
+    val isOffline: Boolean = false
 )
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val orchestrator: JarvisOrchestrator
+    private val orchestrator: JarvisOrchestrator,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AladdinUiState())
     val uiState: StateFlow<AladdinUiState> = _uiState.asStateFlow()
+
+    /** Re-runs the last thing that failed, set by whoever raised the error. */
+    var onRetryModelDownload: (() -> Unit)? = null
 
     val status: StateFlow<String> = _uiState.map { it.statusText }.stateIn(
         viewModelScope, SharingStarted.Lazily, "Ready"
@@ -45,6 +56,16 @@ class MainViewModel @Inject constructor(
 
     init {
         observeOrchestrator()
+        observeNetwork()
+    }
+
+    private fun observeNetwork() {
+        networkMonitor.startMonitoring()
+        viewModelScope.launch {
+            networkMonitor.state.collect { net ->
+                _uiState.update { it.copy(isOffline = !net.isConnected) }
+            }
+        }
     }
 
     private fun observeOrchestrator() {
@@ -132,7 +153,30 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(downloadingModel = null, downloadProgress = 0) }
     }
 
-    fun setError(message: String) {
-        _uiState.update { it.copy(errorMessage = message) }
+    fun setError(message: String, action: ErrorAction = ErrorAction.NONE) {
+        _uiState.update { it.copy(errorMessage = message, errorAction = action) }
+        // Reliability: don't let a stale banner sit forever blocking the UI —
+        // auto-dismiss non-actionable errors after a while, but leave anything
+        // with an actual button (Settings/Retry) up until the user handles it.
+        if (action == ErrorAction.NONE) {
+            viewModelScope.launch {
+                delay(8000)
+                _uiState.update {
+                    if (it.errorMessage == message) it.copy(errorMessage = null) else it
+                }
+            }
+        }
+    }
+
+    fun dismissError() {
+        _uiState.update { it.copy(errorMessage = null, errorAction = ErrorAction.NONE) }
+    }
+
+    fun retryLastAction() {
+        val action = _uiState.value.errorAction
+        dismissError()
+        if (action == ErrorAction.RETRY_MODEL_DOWNLOAD) {
+            onRetryModelDownload?.invoke()
+        }
     }
 }

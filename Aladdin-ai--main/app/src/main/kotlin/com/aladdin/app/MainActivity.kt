@@ -44,7 +44,14 @@ class MainActivity : ComponentActivity() {
         if (denied.isEmpty()) {
             onAllPermissionsGranted()
         } else {
-            viewModel.setError("Permissions denied: ${denied.joinToString { it.substringAfterLast('.') }}")
+            val deniedNames = denied.joinToString { it.substringAfterLast('.') }
+            val micDenied = denied.any { it == Manifest.permission.RECORD_AUDIO }
+            val message = if (micDenied) {
+                "Microphone permission denied — Aladdin can't hear you without it. Tap to open Settings and allow it."
+            } else {
+                "Permissions denied: $deniedNames. Some features won't work. Tap to open Settings."
+            }
+            viewModel.setError(message, ErrorAction.OPEN_APP_SETTINGS)
         }
     }
 
@@ -86,7 +93,15 @@ class MainActivity : ComponentActivity() {
                         onStartListening = { viewModel.startListening() },
                         onStopListening = { viewModel.stopListening() },
                         onClearConversation = { viewModel.clearConversation() },
-                        onStartService = { startAladdinService() }
+                        onStartService = { startAladdinService() },
+                        onDismissError = { viewModel.dismissError() },
+                        onErrorAction = { action ->
+                            when (action) {
+                                ErrorAction.OPEN_APP_SETTINGS -> openAppSettings()
+                                ErrorAction.RETRY_MODEL_DOWNLOAD -> viewModel.retryLastAction()
+                                ErrorAction.NONE -> viewModel.dismissError()
+                            }
+                        }
                     )
                 }
             }
@@ -112,6 +127,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAndDownloadModels() {
+        viewModel.onRetryModelDownload = { checkAndDownloadModels() }
         lifecycleScope.launch {
             if (!modelDownloaderHelper.areAllModelsReady()) {
                 modelDownloaderHelper.downloadModels(
@@ -122,11 +138,25 @@ class MainActivity : ComponentActivity() {
                         viewModel.clearDownloadProgress()
                     },
                     onError = { error ->
-                        viewModel.setError("Model download failed: $error")
+                        viewModel.clearDownloadProgress()
+                        viewModel.setError(
+                            "Model download failed: $error. Check your connection and try again.",
+                            ErrorAction.RETRY_MODEL_DOWNLOAD
+                        )
                     }
                 )
             }
         }
+    }
+
+    private fun openAppSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+            )
+        } catch (e: Exception) { /* no Settings app on this ROM — nothing more we can do */ }
     }
 
     private fun requestBatteryOptimizationExemption() {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.aladdin.app.AladdinUiState
+import com.aladdin.app.ErrorAction
 import com.aladdin.app.ui.screens.ChatScreen
 import com.aladdin.app.ui.screens.MemoryScreen
 import com.aladdin.app.ui.screens.SettingsScreen
@@ -32,7 +33,9 @@ fun AladdinApp(
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
     onClearConversation: () -> Unit,
-    onStartService: () -> Unit
+    onStartService: () -> Unit,
+    onDismissError: () -> Unit = {},
+    onErrorAction: (ErrorAction) -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -57,7 +60,9 @@ fun AladdinApp(
                 onSendMessage = onSendMessage,
                 onStartListening = onStartListening,
                 onStopListening = onStopListening,
-                onClearConversation = onClearConversation
+                onClearConversation = onClearConversation,
+                onDismissError = onDismissError,
+                onErrorAction = onErrorAction
             )
             1 -> MemoryScreen(modifier = Modifier.padding(paddingValues))
             2 -> ToolsScreen(modifier = Modifier.padding(paddingValues))
