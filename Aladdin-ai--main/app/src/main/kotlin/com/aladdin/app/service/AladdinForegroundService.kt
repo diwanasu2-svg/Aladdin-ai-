@@ -14,7 +14,6 @@ import com.aladdin.app.MainActivity
 import com.aladdin.app.notification.NotificationHelper
 import com.aladdin.assistant.orchestrator.JarvisOrchestrator
 import com.aladdin.app.receiver.NotificationActionReceiver
-import com.aladdin.app.wakeword.WakeWordDetector
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.launchIn
@@ -39,7 +38,6 @@ private const val WAKE_LOCK_TAG = "Aladdin:ForegroundWakeLock"
 class AladdinForegroundService : LifecycleService() {
 
     @Inject lateinit var orchestrator: JarvisOrchestrator
-    @Inject lateinit var wakeWordDetector: WakeWordDetector
 
     private var wakeLock: PowerManager.WakeLock? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -124,24 +122,23 @@ class AladdinForegroundService : LifecycleService() {
         serviceScope.launch {
             try {
                 orchestrator.initialise()
-                Log.i(TAG, "Orchestrator started — full pipeline active")
+                Log.i(TAG, "Orchestrator started — full pipeline active (real 24/7 wake-word listening on)")
             } catch (e: Exception) {
                 Log.e(TAG, "Orchestrator start failed: ${e.message}", e)
             }
         }
 
-        // Note: JarvisOrchestrator manages its own internal wake-word listening
-        // (via its WakeWordEngine) once initialise() is called above. This
-        // service-level WakeWordDetector is only used to keep the foreground
-        // notification responsive to wake events; it does not drive the
-        // orchestrator directly (no such API exists on JarvisOrchestrator).
-        wakeWordDetector.startListening()
-        wakeWordDetector.wakeEvents
-            .onEach { event ->
-                Log.d(TAG, "Wake word '${event.keyword}' detected (conf=${event.confidence})")
-                updateNotification("Listening…")
-            }
-            .launchIn(serviceScope)
+        // Reliability fix (2026-07-08): this used to ALSO start a second, separate
+        // mic listener here (WakeWordDetector, backed by a TFLite model that was
+        // never even bundled — see aladdin_wakeword.tflite.README) purely to relay
+        // notification text. But JarvisOrchestrator.initialise() above already opens
+        // its own exclusive AudioRecord for the real, trained ONNX wake-word model.
+        // Two AudioRecord sessions fighting over the same mic source is why "always
+        // listening" wasn't actually working — one of them would starve the other
+        // of audio, so wake-word detection silently failed and the mic button/typing
+        // became the only reliable way in. Removed; assistantStateFlow (observed in
+        // observeOrchestratorState() below) already keeps the notification in sync
+        // with the *real* pipeline's state, including wake-word listening.
     }
 
     // ─── Orchestrator state observer ──────────────────────────────────────────
@@ -212,7 +209,6 @@ class AladdinForegroundService : LifecycleService() {
 
     private fun shutdown() {
         isRunning = false
-        wakeWordDetector.stopListening()
         serviceScope.cancel()
         orchestrator.release()
         releaseWakeLock()

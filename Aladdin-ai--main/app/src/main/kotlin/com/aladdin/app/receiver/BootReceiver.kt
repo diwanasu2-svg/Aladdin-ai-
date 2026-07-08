@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import com.aladdin.app.jarvis.JarvisService
+import com.aladdin.app.service.AladdinForegroundService
 
 private const val TAG = "BootReceiver"
 
@@ -47,24 +47,32 @@ class BootReceiver : BroadcastReceiver() {
             return
         }
 
-        Log.i(TAG, "Boot event: $action — starting JarvisService")
+        Log.i(TAG, "Boot event: $action — starting AladdinForegroundService")
 
         // Task 11: LOCKED_BOOT_COMPLETED fires before Credential-Encrypted storage is
-        // available. JarvisService must not access CE-protected data in this path.
+        // available. The service must not access CE-protected data in this path.
         if (action == "android.intent.action.LOCKED_BOOT_COMPLETED"
             && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
         ) {
             Log.i(TAG, "Direct-boot mode — CE storage not available yet")
         }
 
+        // Reliability fix (2026-07-08): this used to boot the legacy JarvisService,
+        // which runs an entirely separate, dead-end pipeline — plain Android TTS with
+        // a hardcoded "Yes, how can I help?" reply and no real STT/LLM call at all —
+        // while ALSO fighting AladdinForegroundService for exclusive mic access
+        // whenever the app was open at the same time. AladdinForegroundService is the
+        // one wired to the real JarvisOrchestrator (ONNX wake-word → STT → LLM →
+        // TTS), so it's the one that must own 24/7 background listening, including
+        // right after every reboot.
         try {
-            JarvisService.start(context)
-            Log.i(TAG, "JarvisService started successfully after $action")
+            AladdinForegroundService.start(context)
+            Log.i(TAG, "AladdinForegroundService started successfully after $action")
         } catch (e: SecurityException) {
             // Task 11: Catch SecurityException separately — may indicate permission revoked
-            Log.e(TAG, "SecurityException starting JarvisService on boot: ${e.message}")
+            Log.e(TAG, "SecurityException starting AladdinForegroundService on boot: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to start JarvisService on boot", e)
+            Log.e(TAG, "Failed to start AladdinForegroundService on boot", e)
         }
     }
 }
