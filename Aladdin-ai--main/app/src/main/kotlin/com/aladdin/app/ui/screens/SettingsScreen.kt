@@ -21,8 +21,12 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.aladdin.app.provider.ProviderConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "aladdin_settings")
 
@@ -62,6 +66,46 @@ fun SettingsScreen(
     var ollamaPort    by remember { mutableStateOf(providerConfig.ollamaPort.toString()) }
     var ollamaModel   by remember { mutableStateOf(providerConfig.ollamaModel) }
     var providerSaveResult by remember { mutableStateOf<Boolean?>(null) }
+    var testingConnection by remember { mutableStateOf(false) }
+    var connectionTestResult by remember { mutableStateOf<String?>(null) }
+
+    // On-device vs server — settled 2026-07-08 (see /ARCHITECTURE_DECISIONS.md):
+    // an external Ollama/OpenAI-compatible server is the default, stable path.
+    // On-device llama.cpp hung/lagged on this hardware, so it's kept as an
+    // opt-in-only fallback (ProviderConfig.preferredProvider = "local"),
+    // never the default. This flag just surfaces that choice in the UI.
+    var useOnDeviceFallback by remember { mutableStateOf(providerConfig.preferredProvider == "local") }
+
+    fun testOllamaConnection() {
+        scope.launch {
+            testingConnection = true
+            connectionTestResult = null
+            val host = ollamaHost.trim()
+            val port = ollamaPort.toIntOrNull() ?: 11434
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val url = URL("http://$host:$port/v1/models")
+                    (url.openConnection() as HttpURLConnection).run {
+                        connectTimeout = 4000
+                        readTimeout = 4000
+                        requestMethod = "GET"
+                        val code = responseCode
+                        disconnect()
+                        if (code in 200..299) "ok" else "http_$code"
+                    }
+                } catch (e: Exception) {
+                    "error:${e.message ?: e.javaClass.simpleName}"
+                }
+            }
+            testingConnection = false
+            connectionTestResult = when {
+                result == "ok" -> "✅ Connected — Ollama server is reachable at $host:$port"
+                result.startsWith("http_") -> "⚠️ Server responded with ${result.removePrefix("http_")} — check the model name and that the server is an Ollama/OpenAI-compatible endpoint"
+                else -> "❌ Can't reach $host:$port — is 'ollama serve' running? If Ollama runs on your PC, use its LAN IP (not 127.0.0.1) and ensure both devices share the same WiFi."
+            }
+            Toast.makeText(context, connectionTestResult, Toast.LENGTH_LONG).show()
+        }
+    }
 
     var wakeWordEnabled     by remember { mutableStateOf(true) }
     var continuousListening by remember { mutableStateOf(true) }
@@ -270,20 +314,64 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = {
-                            providerConfig.geminiApiKey = geminiApiKey.trim()
-                            providerConfig.ollamaHost = ollamaHost.trim()
-                            providerConfig.ollamaPort = ollamaPort.toIntOrNull() ?: 11434
-                            providerConfig.ollamaModel = ollamaModel.trim()
-                            providerSaveResult = true
-                            Toast.makeText(context, "AI provider settings saved", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Save AI Provider Settings")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                providerConfig.geminiApiKey = geminiApiKey.trim()
+                                providerConfig.ollamaHost = ollamaHost.trim()
+                                providerConfig.ollamaPort = ollamaPort.toIntOrNull() ?: 11434
+                                providerConfig.ollamaModel = ollamaModel.trim()
+                                providerSaveResult = true
+                                Toast.makeText(context, "AI provider settings saved", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.Save, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Save")
+                        }
+                        OutlinedButton(
+                            onClick = ::testOllamaConnection,
+                            enabled = !testingConnection,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            if (testingConnection) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Filled.NetworkCheck, contentDescription = null)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text("Test Connection")
+                        }
+                    }
+                    connectionTestResult?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Divider()
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Settled decision (2026-07-08): a server (Ollama/OpenAI-compatible, above) " +
+                            "is the default AI backend — it's fast and reliable on this device. " +
+                            "Fully on-device (offline, no server needed) is available but was too slow " +
+                            "on this hardware, so it's opt-in only. See ARCHITECTURE_DECISIONS.md.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    SettingsToggle(
+                        title = "Use fully on-device model instead",
+                        subtitle = "No server needed, fully offline — but may be slow/laggy on this device",
+                        icon = Icons.Filled.PhoneAndroid,
+                        checked = useOnDeviceFallback
+                    ) { checked ->
+                        useOnDeviceFallback = checked
+                        providerConfig.preferredProvider = if (checked) "local" else "ollama"
+                        Toast.makeText(
+                            context,
+                            if (checked) "Switched to on-device model (opt-in fallback)" else "Switched back to server (Ollama)",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
