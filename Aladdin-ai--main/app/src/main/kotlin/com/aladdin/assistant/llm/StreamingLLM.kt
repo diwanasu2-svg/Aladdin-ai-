@@ -23,23 +23,23 @@ import java.util.concurrent.TimeUnit
  * parameters (`StreamingLLM()`), hardcoded to a local Ollama server at
  * `localhost:11434`. It completely ignored the Gemini / OpenAI / Anthropic
  * settings the user configures in the Settings screen (backed by
- * [ProviderConfig]). If Ollama wasn't actually running on the device (the
- * common case — it requires a manual PRoot Debian + `ollama serve` setup),
- * every single chat message failed with a silent [LlmEvent.Error] that the
- * orchestrator swallowed without ever showing anything in the chat UI. That
- * is why typed messages like "hello" never got a reply and no error was
- * visible either.
+ * [ProviderConfig]). If Ollama wasn't actually running on the device, every
+ * single chat message failed with a silent [LlmEvent.Error] that the
+ * orchestrator swallowed without ever showing anything in the chat UI.
  *
- * Bug fix (2026-07-07): removed the dependency on Ollama entirely as the
- * default/fallback path — the user does not want to run any server (local
- * or remote) to chat with Aladdin. The app now ships a fully on-device
- * llama.cpp engine (see :llama-cpp) that runs a bundled/downloaded GGUF
- * model (`ModelDownloader`'s "llama-3b-q4" spec) directly inside the APK's
- * process, no network and no external server required. Priority order:
+ * Bug fix (2026-07-07): briefly switched the default to a fully on-device
+ * llama.cpp engine (see :llama-cpp) to avoid needing any server at all.
+ *
+ * Bug fix (2026-07-08): reverted back to an Ollama/OpenAI-compatible HTTP
+ * server as the DEFAULT path — the on-device engine was too slow and hung
+ * on this hardware. Priority order now:
  *   1. Gemini (only if the user explicitly added an API key in Settings)
- *   2. Local on-device llama.cpp (the default — always available, offline)
- *   3. Ollama / OpenAI-compatible HTTP endpoint (only if the user explicitly
- *      switches `preferredProvider` to "ollama" in Settings — opt-in only)
+ *   2. Ollama / OpenAI-compatible HTTP endpoint at ProviderConfig's
+ *      ollamaHost:ollamaPort — the default, same as the original app.
+ *      Point this at a real running Ollama server (on-device via
+ *      PRoot/Termux `ollama serve`, or a PC/cloud server on your network).
+ *   3. On-device llama.cpp — only used if the user explicitly sets
+ *      `preferredProvider = "local"` in Settings.
  */
 class StreamingLLM(
     private val providerConfig: ProviderConfig? = null,
@@ -50,7 +50,7 @@ class StreamingLLM(
 ) {
     companion object { private const val TAG = "StreamingLLM" }
 
-    // ── On-device llama.cpp (default backend — no server, fully offline) ──────
+    // ── On-device llama.cpp (opt-in fallback only — set preferredProvider = "local") ──
     private val localEngine: LlamaCppEngine? = context?.let { LlamaCppEngine(it) }
     @Volatile private var localInitAttempted = false
 
@@ -93,16 +93,16 @@ class StreamingLLM(
         history.add(mapOf("role" to "user", "content" to userMessage))
 
         val useGemini = providerConfig?.isGeminiConfigured == true
-        val useOllamaExplicitly = providerConfig?.preferredProvider == "ollama"
+        val useLocalExplicitly = providerConfig?.preferredProvider == "local"
 
         when {
             useGemini -> emitAll(streamGemini())
-            useOllamaExplicitly -> emitAll(streamOpenAiCompatible())
-            else -> emitAll(streamLocal())
+            useLocalExplicitly -> emitAll(streamLocal())
+            else -> emitAll(streamOpenAiCompatible())
         }
     }.flowOn(Dispatchers.IO)
 
-    // ── Local on-device llama.cpp (default — no Ollama, no server, no internet) ─
+    // ── Local on-device llama.cpp (opt-in only — no server, no internet) ──────
 
     private fun streamLocal(): Flow<LlmEvent> = flow {
         if (localEngine == null) {
@@ -224,7 +224,7 @@ class StreamingLLM(
           catch (e: Exception)   { emit(LlmEvent.Error("Error: ${e.message}", e)) }
     }.flowOn(Dispatchers.IO)
 
-    // ── OpenAI-compatible endpoint (Ollama / LM Studio / cloud) ───────────────
+    // ── OpenAI-compatible endpoint (Ollama / LM Studio / cloud) — DEFAULT ─────
 
     private fun streamOpenAiCompatible(): Flow<LlmEvent> = flow {
         val effectiveBaseUrl = providerConfig?.let { "http://${it.ollamaHost}:${it.ollamaPort}/v1" } ?: baseUrl
@@ -244,7 +244,7 @@ class StreamingLLM(
         try {
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    emit(LlmEvent.Error("Ollama HTTP ${resp.code} — is 'ollama serve' running on the device with model '$effectiveModel' pulled?"))
+                    emit(LlmEvent.Error("Ollama HTTP ${resp.code} — is 'ollama serve' running with model '$effectiveModel' pulled? Check Settings for the correct host/port ($effectiveBaseUrl)."))
                     return@flow
                 }
                 val src = resp.body?.source() ?: run { emit(LlmEvent.Error("Empty body")); return@flow }
@@ -272,7 +272,7 @@ class StreamingLLM(
                 emit(LlmEvent.Done)
             }
         } catch (e: IOException) {
-            emit(LlmEvent.Error("Network: ${e.message} — is 'ollama serve' running on the device? Or add a Gemini API key in Settings instead.", e))
+            emit(LlmEvent.Error("Network: ${e.message} — is 'ollama serve' running and reachable at ${providerConfig?.let { "${it.ollamaHost}:${it.ollamaPort}" } ?: baseUrl}? Check Settings, or add a Gemini API key instead.", e))
         } catch (e: Exception) { emit(LlmEvent.Error("Error: ${e.message}", e)) }
     }.flowOn(Dispatchers.IO)
 

@@ -60,7 +60,7 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
     var ollamaModel: String
         get() = prefs.getString("ollama_model", "llama3.2:3b") ?: "llama3.2:3b"
         set(v) { prefs.edit { putString("ollama_model", v) } }
-    val ollamaBaseUrl get() = "http://\$ollamaHost:\$ollamaPort"
+    val ollamaBaseUrl get() = "http://${ollamaHost}:${ollamaPort}"
     val isOllamaConfigured get() = ollamaHost.isNotBlank()
 
     // Item 21: Telegram
@@ -99,23 +99,27 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
         set(v) { prefs.edit { putBoolean("smtp_tls", v) } }
     val isSmtpConfigured get() = smtpUser.isNotBlank() && smtpPassword.isNotBlank()
 
-    // Item 27b: On-device (llama.cpp, bundled in the APK — no server, no
-    // internet at inference time). This is the default so the assistant
-    // works out of the box without any setup; users can still opt into
-    // Gemini (add an API key) or explicitly switch to "ollama" here.
+    // Item 27b: default provider. Reverted (2026-07-08) back to using an
+    // external Ollama server — the bundled on-device llama.cpp engine was
+    // too slow / hung on this device's hardware. Point `ollamaHost` /
+    // `ollamaPort` (Settings screen) at wherever your Ollama server runs
+    // (127.0.0.1 if it's on the same phone via PRoot/Termux with
+    // `ollama serve`, or a LAN/remote IP for a PC/cloud server). Users can
+    // still opt into Gemini (add an API key), or explicitly switch this
+    // back to "local" to use the fully offline on-device engine instead.
     var preferredProvider: String
-        get() = prefs.getString("pref_provider", "local") ?: "local"
+        get() = prefs.getString("pref_provider", "ollama") ?: "ollama"
         set(v) { prefs.edit { putString("pref_provider", v) } }
 
     fun getConfiguredProviders() = buildList {
-        add("local") // always available — bundled on-device model
+        add("ollama") // default path — requires an Ollama server reachable at ollamaHost:ollamaPort
+        add("local") // always available as a fallback — bundled on-device model
         if (isGeminiConfigured) add("gemini")
         if (isOpenAiConfigured) add("openai")
         if (isAnthropicConfigured) add("anthropic")
-        if (isOllamaConfigured) add("ollama")
     }
 
-    fun logConfig() = Log.i(TAG, "Providers:\${getConfiguredProviders()} SMTP:\$isSmtpConfigured Tg:\$isTelegramConfigured Discord:\$isDiscordConfigured")
+    fun logConfig() = Log.i(TAG, "Providers:${getConfiguredProviders()} SMTP:$isSmtpConfigured Tg:$isTelegramConfigured Discord:$isDiscordConfigured")
 
     companion object { private const val TAG = "ProviderConfig" }
 }
