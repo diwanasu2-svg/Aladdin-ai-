@@ -35,11 +35,17 @@ import java.util.concurrent.TimeUnit
  * on this hardware. Priority order now:
  *   1. Gemini (only if the user explicitly added an API key in Settings)
  *   2. Ollama / OpenAI-compatible HTTP endpoint at ProviderConfig's
- *      ollamaHost:ollamaPort — the default, same as the original app.
- *      Point this at a real running Ollama server (on-device via
- *      PRoot/Termux `ollama serve`, or a PC/cloud server on your network).
+ *      ollamaBaseUrl + ollamaApiPath — the default, same as the original
+ *      app. Point this at a real running server: on-device via
+ *      PRoot/Termux `ollama serve` (http://127.0.0.1:11434), a LAN/cloud
+ *      Ollama box, or any https:// tunnel (ngrok, Cloudflare Tunnel, etc).
  *   3. On-device llama.cpp — only used if the user explicitly sets
  *      `preferredProvider = "local"` in Settings.
+ *
+ * Custom-endpoint fix (2026-07-08): base URL, HTTPS, optional port, and the
+ * API path ("/v1" OpenAI-compatible vs "/api" native Ollama) are all now
+ * configurable from Settings via [ProviderConfig] instead of being baked
+ * into a fixed "http://host:port/v1" shape.
  */
 class StreamingLLM(
     private val providerConfig: ProviderConfig? = null,
@@ -237,15 +243,25 @@ class StreamingLLM(
     }.flowOn(Dispatchers.IO)
 
     // ── OpenAI-compatible endpoint (Ollama / LM Studio / cloud) — DEFAULT ─────
+    //
+    // Custom-endpoint fix (2026-07-08): this used to hardcode
+    // "http://<host>:<port>/v1/chat/completions" — no https, no custom
+    // port-less URLs (e.g. an ngrok tunnel), and no way to talk to a
+    // server that only exposes Ollama's native "/api/chat" instead of an
+    // OpenAI-compatible "/v1/chat/completions" route. Now the full base
+    // URL + endpoint style both come from Settings (ProviderConfig), and
+    // failures are split into distinct, actionable messages instead of one
+    // generic "Network: ..." string.
 
     private fun streamOpenAiCompatible(): Flow<LlmEvent> = flow {
-        val effectiveBaseUrl = providerConfig?.let { "http://${it.ollamaHost}:${it.ollamaPort}/v1" } ?: baseUrl
         val effectiveModel = providerConfig?.ollamaModel ?: model
+        val nativeApi = providerConfig?.isNativeOllamaApi == true
+        val chatUrl = providerConfig?.ollamaChatUrl() ?: "$baseUrl/chat/completions"
 
-        val bodyJson = buildJson(effectiveModel)
+        val bodyJson = if (nativeApi) buildNativeOllamaJson(effectiveModel) else buildJson(effectiveModel)
         val body = bodyJson.toRequestBody("application/json".toMediaType())
         val req = Request.Builder()
-            .url("$effectiveBaseUrl/chat/completions")
+            .url(chatUrl)
             .addHeader("Authorization", "Bearer $apiKey")
             .post(body).build()
 
@@ -256,37 +272,76 @@ class StreamingLLM(
         try {
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    emit(LlmEvent.Error("Ollama HTTP ${resp.code} — is 'ollama serve' running with model '$effectiveModel' pulled? Check Settings for the correct host/port ($effectiveBaseUrl)."))
+                    val errBody = try { resp.body?.string() } catch (_: Exception) { null }
+                    emit(LlmEvent.Error(friendlyHttpError(resp.code, chatUrl, effectiveModel, errBody)))
                     return@flow
                 }
-                val src = resp.body?.source() ?: run { emit(LlmEvent.Error("Empty body")); return@flow }
+                val src = resp.body?.source() ?: run { emit(LlmEvent.Error("Empty body from $chatUrl")); return@flow }
                 while (!src.exhausted()) {
                     val line = src.readUtf8Line() ?: break
-                    if (!line.startsWith("data: ")) continue
-                    val data = line.removePrefix("data: ").trim()
-                    if (data == "[DONE]") break
-                    val token = parseToken(data) ?: continue
-                    if (token.isEmpty()) continue
-                    full.append(token); sentBuf.append(token)
-                    emit(LlmEvent.Token(token))
-                    if (token.any { it in terminators }) {
-                        val next = sentBuf.toString().indexOfLast { it in terminators }
-                        val sent = sentBuf.substring(0, next + 1).trim()
-                        sentBuf.delete(0, next + 1)
-                        if (sent.isNotBlank()) emit(LlmEvent.SentenceComplete(sent))
+                    if (line.isBlank()) continue
+                    val token: String?
+                    var isDone = false
+                    if (nativeApi) {
+                        // Ollama native /api/chat streams one full JSON object per line (NDJSON),
+                        // e.g. {"message":{"role":"assistant","content":"..."},"done":false}
+                        val obj = try { JSONObject(line) } catch (_: Exception) { null }
+                        token = obj?.optJSONObject("message")?.optString("content", null)
+                        isDone = obj?.optBoolean("done", false) == true
+                    } else {
+                        if (!line.startsWith("data: ")) continue
+                        val data = line.removePrefix("data: ").trim()
+                        if (data == "[DONE]") break
+                        token = parseToken(data)
                     }
+                    if (!token.isNullOrEmpty()) {
+                        full.append(token); sentBuf.append(token)
+                        emit(LlmEvent.Token(token))
+                        if (token.any { it in terminators }) {
+                            val next = sentBuf.toString().indexOfLast { it in terminators }
+                            val sent = sentBuf.substring(0, next + 1).trim()
+                            sentBuf.delete(0, next + 1)
+                            if (sent.isNotBlank()) emit(LlmEvent.SentenceComplete(sent))
+                        }
+                    }
+                    if (isDone) break
                 }
                 val rem = sentBuf.toString().trim()
                 if (rem.isNotBlank()) emit(LlmEvent.SentenceComplete(rem))
                 val fullText = full.toString()
+                if (fullText.isBlank()) {
+                    emit(LlmEvent.Error("Server at $chatUrl returned an empty response. Check the model name ('$effectiveModel') and API path in Settings."))
+                    return@flow
+                }
                 contextWindow.addAssistantMessage(fullText)
                 emit(LlmEvent.FullResponse(fullText))
                 emit(LlmEvent.Done)
             }
+        } catch (e: java.net.SocketTimeoutException) {
+            emit(LlmEvent.Error("Timeout — $chatUrl didn't respond in time. Is the server slow/overloaded, or is a VPN/tunnel dropping the connection?", e))
+        } catch (e: java.net.ConnectException) {
+            emit(LlmEvent.Error("Connection refused — nothing is listening at $chatUrl. Check Settings → Server URL, and make sure the server is running.", e))
+        } catch (e: java.net.UnknownHostException) {
+            emit(LlmEvent.Error("Can't resolve host for $chatUrl — check the Server URL in Settings for typos (missing https://, wrong domain, etc.).", e))
+        } catch (e: javax.net.ssl.SSLException) {
+            emit(LlmEvent.Error("HTTPS/TLS error talking to $chatUrl — ${e.message}. If this is a self-signed cert, use http:// instead or fix the server's certificate.", e))
         } catch (e: IOException) {
-            emit(LlmEvent.Error("Network: ${e.message} — is 'ollama serve' running and reachable at ${providerConfig?.let { "${it.ollamaHost}:${it.ollamaPort}" } ?: baseUrl}? Check Settings, or add a Gemini API key instead.", e))
+            emit(LlmEvent.Error("Network error reaching $chatUrl — ${e.message}. Check Settings, or add a Gemini API key instead.", e))
         } catch (e: Exception) { emit(LlmEvent.Error("Error: ${e.message}", e)) }
     }.flowOn(Dispatchers.IO)
+
+    /** Turns a failed HTTP response into one of several distinct, specific error messages. */
+    private fun friendlyHttpError(code: Int, url: String, model: String, bodySnippet: String?): String {
+        val bodyLower = bodySnippet?.lowercase() ?: ""
+        return when {
+            code == 404 && bodyLower.contains("model") -> "Model not found — '$model' isn't available on this server. Pull it there first (e.g. `ollama pull $model`) or fix the model name in Settings."
+            code == 404 -> "404 Not Found at $url — the endpoint path looks wrong for this server. In Settings, try switching the API path between '/v1' (OpenAI-compatible) and '/api' (native Ollama)."
+            code == 400 && bodyLower.contains("model") -> "Model not found — the server rejected model '$model'. Check the exact installed model name (e.g. `ollama list`) and update Settings."
+            code == 401 || code == 403 -> "Unauthorized (HTTP $code) at $url — this server requires authentication that isn't configured."
+            code in 500..599 -> "Server error (HTTP $code) at $url — the AI server itself is failing; check its logs. ${bodySnippet?.take(150) ?: ""}"
+            else -> "HTTP $code from $url — ${bodySnippet?.take(200) ?: "no details"}"
+        }
+    }
 
     private fun buildJson(effectiveModel: String): String {
         val msgs = JSONArray()
@@ -297,6 +352,20 @@ class StreamingLLM(
         return JSONObject().apply {
             put("model", effectiveModel); put("messages", msgs)
             put("stream", true); put("temperature", 0.7); put("max_tokens", 1024)
+        }.toString()
+    }
+
+    /** Payload for Ollama's native /api/chat route (no "max_tokens"/OpenAI-only fields). */
+    private fun buildNativeOllamaJson(effectiveModel: String): String {
+        val msgs = JSONArray()
+        if (contextWindow.systemPrompt.isNotBlank()) {
+            msgs.put(JSONObject(mapOf("role" to "system", "content" to contextWindow.systemPrompt)))
+        }
+        history.forEach { msgs.put(JSONObject(it)) }
+        return JSONObject().apply {
+            put("model", effectiveModel); put("messages", msgs)
+            put("stream", true)
+            put("options", JSONObject().apply { put("temperature", 0.7) })
         }.toString()
     }
 

@@ -62,8 +62,13 @@ fun SettingsScreen(
     // pipeline now reads from) so entering a key here actually fixes chat.
     val providerConfig = remember { ProviderConfig(context) }
     var geminiApiKey  by remember { mutableStateOf(providerConfig.geminiApiKey) }
-    var ollamaHost    by remember { mutableStateOf(providerConfig.ollamaHost) }
-    var ollamaPort    by remember { mutableStateOf(providerConfig.ollamaPort.toString()) }
+    // Custom-base-URL fix (2026-07-08): replaced the old separate Host +
+    // Port fields (which assumed plain http:// and always required a
+    // port) with one full Server URL field — supports https, tunnels
+    // (e.g. ngrok), and URLs with no explicit port — plus a configurable
+    // API Path so servers exposing "/api" instead of "/v1" also work.
+    var ollamaServerUrl by remember { mutableStateOf(providerConfig.ollamaBaseUrl) }
+    var ollamaApiPath   by remember { mutableStateOf(providerConfig.ollamaApiPath) }
     var ollamaModel   by remember { mutableStateOf(providerConfig.ollamaModel) }
     var providerSaveResult by remember { mutableStateOf<Boolean?>(null) }
     var testingConnection by remember { mutableStateOf(false) }
@@ -76,32 +81,72 @@ fun SettingsScreen(
     // never the default. This flag just surfaces that choice in the UI.
     var useOnDeviceFallback by remember { mutableStateOf(providerConfig.preferredProvider == "local") }
 
+    // Connection-test fix (2026-07-08): now verifies BOTH the server AND the
+    // model (via the server's model-list endpoint), and reports distinct,
+    // specific outcomes — timeout, connection refused, unresolvable host,
+    // TLS error, HTTP 404, and "model not found" — instead of one generic
+    // "can't reach" message for every failure type.
     fun testOllamaConnection() {
         scope.launch {
             testingConnection = true
             connectionTestResult = null
-            val host = ollamaHost.trim()
-            val port = ollamaPort.toIntOrNull() ?: 11434
-            val result = withContext(Dispatchers.IO) {
+
+            val base = ollamaServerUrl.trim().trimEnd('/')
+            val path = ollamaApiPath.trim().trimEnd('/').let { if (it.startsWith("/")) it else "/$it" }
+            val native = path.trimStart('/').substringBefore('/').equals("api", ignoreCase = true)
+            val listUrl = base + path + if (native) "/tags" else "/models"
+            val modelName = ollamaModel.trim()
+
+            data class Probe(val code: Int, val body: String?, val error: String?)
+
+            val probe = withContext(Dispatchers.IO) {
                 try {
-                    val url = URL("http://$host:$port/v1/models")
-                    (url.openConnection() as HttpURLConnection).run {
-                        connectTimeout = 4000
-                        readTimeout = 4000
-                        requestMethod = "GET"
-                        val code = responseCode
-                        disconnect()
-                        if (code in 200..299) "ok" else "http_$code"
-                    }
+                    val conn = URL(listUrl).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 5000
+                    conn.requestMethod = "GET"
+                    val code = conn.responseCode
+                    val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                    val body = try { stream?.bufferedReader()?.readText() } catch (_: Exception) { null }
+                    conn.disconnect()
+                    Probe(code, body, null)
+                } catch (e: java.net.SocketTimeoutException) {
+                    Probe(-1, null, "timeout")
+                } catch (e: java.net.ConnectException) {
+                    Probe(-1, null, "refused")
+                } catch (e: java.net.UnknownHostException) {
+                    Probe(-1, null, "unknown_host")
+                } catch (e: javax.net.ssl.SSLException) {
+                    Probe(-1, null, "ssl:${e.message}")
                 } catch (e: Exception) {
-                    "error:${e.message ?: e.javaClass.simpleName}"
+                    Probe(-1, null, "error:${e.message ?: e.javaClass.simpleName}")
                 }
             }
+
             testingConnection = false
             connectionTestResult = when {
-                result == "ok" -> "✅ Connected — Ollama server is reachable at $host:$port"
-                result.startsWith("http_") -> "⚠️ Server responded with ${result.removePrefix("http_")} — check the model name and that the server is an Ollama/OpenAI-compatible endpoint"
-                else -> "❌ Can't reach $host:$port — is 'ollama serve' running? If Ollama runs on your PC, use its LAN IP (not 127.0.0.1) and ensure both devices share the same WiFi."
+                probe.error == "timeout" ->
+                    "⏱️ Timeout — $listUrl didn't respond in time. Is the server running and reachable (check tunnel/VPN/firewall)?"
+                probe.error == "refused" ->
+                    "🔌 Connection refused — nothing is listening at $base. Double-check the Server URL and that the server is running."
+                probe.error == "unknown_host" ->
+                    "🌐 Can't resolve host — check the Server URL for typos (missing https://, wrong domain, etc.)."
+                probe.error?.startsWith("ssl") == true ->
+                    "🔒 HTTPS/TLS error — ${probe.error.removePrefix("ssl:")}. If it's a self-signed cert, try http:// or fix the server's certificate."
+                probe.error != null ->
+                    "❌ ${probe.error}"
+                probe.code == 404 ->
+                    "❌ 404 Not Found at $listUrl — try switching API Path between '/v1' (OpenAI-compatible) and '/api' (native Ollama)."
+                probe.code !in 200..299 ->
+                    "⚠️ Server responded with HTTP ${probe.code} at $listUrl — check the API Path and server type."
+                else -> {
+                    val hasModel = modelName.isBlank() || probe.body?.contains(modelName, ignoreCase = true) == true
+                    if (hasModel) {
+                        "✅ Connected — server reachable at $base and model '$modelName' is available."
+                    } else {
+                        "⚠️ Connected to server, but model '$modelName' wasn't found. Pull it there first (e.g. `ollama pull $modelName`) or fix the model name above."
+                    }
+                }
             }
             Toast.makeText(context, connectionTestResult, Toast.LENGTH_LONG).show()
         }
@@ -290,27 +335,34 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Or, if you're running Ollama locally instead:",
+                        "Or, if you're running Ollama / an OpenAI-compatible server (local, LAN, or a remote https:// tunnel like ngrok):",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = ollamaHost, onValueChange = { ollamaHost = it },
-                            label = { Text("Host") }, singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                        OutlinedTextField(
-                            value = ollamaPort, onValueChange = { ollamaPort = it },
-                            label = { Text("Port") }, singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    OutlinedTextField(
+                        value = ollamaServerUrl, onValueChange = { ollamaServerUrl = it },
+                        label = { Text("Server URL") },
+                        placeholder = { Text("https://struck-activist-credible.ngrok-free.dev") },
+                        supportingText = { Text("Full URL — http:// or https://, port only if the server needs one") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = ollamaApiPath, onValueChange = { ollamaApiPath = it },
+                        label = { Text("API Path") },
+                        placeholder = { Text("/v1") },
+                        supportingText = { Text("'/v1' for OpenAI-compatible servers, '/api' for Ollama's native API") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Spacer(Modifier.height(4.dp))
                     OutlinedTextField(
                         value = ollamaModel, onValueChange = { ollamaModel = it },
-                        label = { Text("Ollama Model") }, singleLine = true,
+                        label = { Text("Model") },
+                        placeholder = { Text("llama3.2:3b, gemma3:1b, or any installed model") },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(8.dp))
@@ -318,8 +370,8 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 providerConfig.geminiApiKey = geminiApiKey.trim()
-                                providerConfig.ollamaHost = ollamaHost.trim()
-                                providerConfig.ollamaPort = ollamaPort.toIntOrNull() ?: 11434
+                                providerConfig.ollamaBaseUrl = ollamaServerUrl.trim()
+                                providerConfig.ollamaApiPath = ollamaApiPath.trim()
                                 providerConfig.ollamaModel = ollamaModel.trim()
                                 providerSaveResult = true
                                 Toast.makeText(context, "AI provider settings saved", Toast.LENGTH_SHORT).show()
