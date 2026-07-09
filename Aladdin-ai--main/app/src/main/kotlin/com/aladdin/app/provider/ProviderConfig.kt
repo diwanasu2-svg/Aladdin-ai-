@@ -71,7 +71,7 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
         get() = prefs.getString("ollama_api_path", "/v1") ?: "/v1"
         set(v) { prefs.edit { putString("ollama_api_path", normalizeApiPath(v)) } }
 
-    /** True when [ollamaApiPath] points at Ollama's native `/api/*` routes rather than an OpenAI-compatible `/v1/*` route. */
+    /** True when [ollamaApiPath] points at Ollama's native "api" routes rather than an OpenAI-compatible "v1" route. */
     val isNativeOllamaApi: Boolean
         get() = ollamaApiPath.trimStart('/').substringBefore('/').equals("api", ignoreCase = true)
 
