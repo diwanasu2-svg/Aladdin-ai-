@@ -87,7 +87,7 @@ class ProviderManager @Inject constructor(
             ProviderConfig(ProviderType.GEMINI,     "Google Gemini",           isLocal = false, requiresApiKey = true,  defaultModel = "gemini-2.0-flash", endpoint = "https://generativelanguage.googleapis.com"),
             ProviderConfig(ProviderType.OPENAI,     "OpenAI",                  isLocal = false, requiresApiKey = true,  defaultModel = "gpt-4o-mini",       endpoint = "https://api.openai.com"),
             ProviderConfig(ProviderType.ANTHROPIC,  "Anthropic Claude",        isLocal = false, requiresApiKey = true,  defaultModel = "claude-3-5-haiku-20241022", endpoint = "https://api.anthropic.com"),
-            ProviderConfig(ProviderType.OLLAMA,     "Ollama (Self-hosted)",    isLocal = true,  requiresApiKey = false, defaultModel = "llama3.2", endpoint = "http://127.0.0.1:11434")
+            ProviderConfig(ProviderType.OLLAMA,     "Ollama (Self-hosted)",    isLocal = true,  requiresApiKey = false, defaultModel = "llama3.2:3b", endpoint = "http://10.159.85.23:11434")
         ).forEach { cfg ->
             providers[cfg.type] = cfg
             health[cfg.type]    = ProviderHealth(cfg.type)

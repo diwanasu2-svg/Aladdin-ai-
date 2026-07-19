@@ -60,7 +60,7 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
     // URL directly — http OR https, with or without a port — and it is
     // used exactly as given.
     var ollamaBaseUrl: String
-        get() = prefs.getString("ollama_base_url", null) ?: legacyBaseUrlFallback()
+        get() = prefs.getString("ollama_base_url", "http://10.159.85.23:11434") ?: legacyBaseUrlFallback()
         set(v) { prefs.edit { putString("ollama_base_url", v.trim().trimEnd('/')) } }
 
     // Endpoint path appended after the base URL. Default "/v1" talks to an
@@ -109,7 +109,7 @@ class ProviderConfig @Inject constructor(@ApplicationContext private val ctx: Co
             val legacyPort = prefs.getInt("ollama_port", 11434)
             "http://$legacyHost:$legacyPort"
         } else {
-            "http://127.0.0.1:11434"
+            "http://10.159.85.23:11434"
         }
     }
 

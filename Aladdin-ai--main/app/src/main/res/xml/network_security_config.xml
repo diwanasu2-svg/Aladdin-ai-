@@ -15,6 +15,7 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain>127.0.0.1</domain>
+        <domain>10.159.85.23</domain>
         <domain includeSubdomains="true">192.168.0.0</domain>
         <domain includeSubdomains="true">10.0.0.0</domain>
     </domain-config>

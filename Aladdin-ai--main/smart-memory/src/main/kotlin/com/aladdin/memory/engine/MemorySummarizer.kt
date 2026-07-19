@@ -26,7 +26,7 @@ class MemorySummarizer @Inject constructor() {
 
     companion object {
         private const val TAG = "MemorySummarizer"
-        private const val LLM_PORT = 11434          // Ollama default port
+        private const val LLM_HOST = "http://10.159.85.23:11434"  // Ollama server
         private const val MAX_SUMMARY_WORDS = 150
         private const val MIN_MEMORIES_TO_SUMMARIZE = 5
     }
@@ -104,7 +104,7 @@ class MemorySummarizer @Inject constructor() {
                 }
                 val prompt = buildSummarizationPrompt(conversation)
 
-                val url = java.net.URL("http://127.0.0.1:$LLM_PORT/api/generate")
+                val url = java.net.URL("$LLM_HOST/api/generate")
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.requestMethod = "POST"
                 conn.setRequestProperty("Content-Type", "application/json")
@@ -112,7 +112,7 @@ class MemorySummarizer @Inject constructor() {
                 conn.connectTimeout = 5_000
                 conn.readTimeout = 30_000
 
-                val body = """{"model":"mistral","prompt":${escapeJson(prompt)},"stream":false}"""
+                val body = """{"model":"llama3.2:3b","prompt":${escapeJson(prompt)},"stream":false}"""
                 conn.outputStream.bufferedWriter().use { it.write(body) }
 
                 if (conn.responseCode == 200) {

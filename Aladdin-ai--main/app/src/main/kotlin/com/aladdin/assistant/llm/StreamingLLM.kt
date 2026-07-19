@@ -50,9 +50,9 @@ import java.util.concurrent.TimeUnit
 class StreamingLLM(
     private val providerConfig: ProviderConfig? = null,
     private val context: Context? = null,
-    private val baseUrl: String = "http://127.0.0.1:11434/v1",
+    private val baseUrl: String = "http://10.159.85.23:11434/v1",
     private val apiKey: String = "ollama",
-    private val model: String = "llama3.2"
+    private val model: String = "llama3.2:3b"
 ) {
     companion object { private const val TAG = "StreamingLLM" }
 
@@ -265,10 +265,6 @@ class StreamingLLM(
             .addHeader("Authorization", "Bearer $apiKey")
             .post(body).build()
 
-        val full = StringBuilder()
-        val sentBuf = StringBuilder()
-        val terminators = setOf('.', '!', '?')
-
         try {
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
@@ -276,45 +272,29 @@ class StreamingLLM(
                     emit(LlmEvent.Error(friendlyHttpError(resp.code, chatUrl, effectiveModel, errBody)))
                     return@flow
                 }
-                val src = resp.body?.source() ?: run { emit(LlmEvent.Error("Empty body from $chatUrl")); return@flow }
-                while (!src.exhausted()) {
-                    val line = src.readUtf8Line() ?: break
-                    if (line.isBlank()) continue
-                    val token: String?
-                    var isDone = false
-                    if (nativeApi) {
-                        // Ollama native /api/chat streams one full JSON object per line (NDJSON),
-                        // e.g. {"message":{"role":"assistant","content":"..."},"done":false}
-                        val obj = try { JSONObject(line) } catch (_: Exception) { null }
-                        token = obj?.optJSONObject("message")?.optString("content", null)
-                        isDone = obj?.optBoolean("done", false) == true
-                    } else {
-                        if (!line.startsWith("data: ")) continue
-                        val data = line.removePrefix("data: ").trim()
-                        if (data == "[DONE]") break
-                        token = parseToken(data)
-                    }
-                    if (!token.isNullOrEmpty()) {
-                        full.append(token); sentBuf.append(token)
-                        emit(LlmEvent.Token(token))
-                        if (token.any { it in terminators }) {
-                            val next = sentBuf.toString().indexOfLast { it in terminators }
-                            val sent = sentBuf.substring(0, next + 1).trim()
-                            sentBuf.delete(0, next + 1)
-                            if (sent.isNotBlank()) emit(LlmEvent.SentenceComplete(sent))
-                        }
-                    }
-                    if (isDone) break
+                val bodyStr = resp.body?.string() ?: run {
+                    emit(LlmEvent.Error("Empty body from $chatUrl")); return@flow
                 }
-                val rem = sentBuf.toString().trim()
-                if (rem.isNotBlank()) emit(LlmEvent.SentenceComplete(rem))
-                val fullText = full.toString()
-                if (fullText.isBlank()) {
+                // stream: false — response is a single JSON object, not SSE/NDJSON
+                val token: String? = if (nativeApi) {
+                    // Ollama native /api/chat: {"message":{"role":"assistant","content":"..."},"done":true}
+                    try { JSONObject(bodyStr).optJSONObject("message")?.optString("content", null) }
+                    catch (_: Exception) { null }
+                } else {
+                    // OpenAI-compatible: {"choices":[{"message":{"role":"assistant","content":"..."}}]}
+                    try {
+                        JSONObject(bodyStr).optJSONArray("choices")
+                            ?.optJSONObject(0)?.optJSONObject("message")?.optString("content", null)
+                    } catch (_: Exception) { null }
+                }
+                if (token.isNullOrBlank()) {
                     emit(LlmEvent.Error("Server at $chatUrl returned an empty response. Check the model name ('$effectiveModel') and API path in Settings."))
                     return@flow
                 }
-                contextWindow.addAssistantMessage(fullText)
-                emit(LlmEvent.FullResponse(fullText))
+                emit(LlmEvent.Token(token))
+                emit(LlmEvent.SentenceComplete(token))
+                contextWindow.addAssistantMessage(token)
+                emit(LlmEvent.FullResponse(token))
                 emit(LlmEvent.Done)
             }
         } catch (e: java.net.SocketTimeoutException) {
@@ -351,7 +331,7 @@ class StreamingLLM(
         history.forEach { msgs.put(JSONObject(it)) }
         return JSONObject().apply {
             put("model", effectiveModel); put("messages", msgs)
-            put("stream", true); put("temperature", 0.7); put("max_tokens", 1024)
+            put("stream", false); put("temperature", 0.7); put("max_tokens", 1024)
         }.toString()
     }
 
@@ -364,7 +344,7 @@ class StreamingLLM(
         history.forEach { msgs.put(JSONObject(it)) }
         return JSONObject().apply {
             put("model", effectiveModel); put("messages", msgs)
-            put("stream", true)
+            put("stream", false)
             put("options", JSONObject().apply { put("temperature", 0.7) })
         }.toString()
     }
