@@ -7,10 +7,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * FallbackChain — Item 92: Primary → Backup → Fallback with graceful degradation.
+ * FallbackChain — Primary → Backup → Fallback with graceful degradation.
  *
  * Executes a request against providers in priority order, advancing to the next
  * provider on failure, and notifying the user on each switch.
+ *
+ * Provider order: Gemini → OpenAI → Anthropic → llama.cpp → MLC LLM
+ * (Ollama removed — Gemini is the default cloud backend)
  */
 @Singleton
 class FallbackChain @Inject constructor(
@@ -31,16 +34,10 @@ class FallbackChain @Inject constructor(
         ProviderManager.ProviderType.GEMINI,
         ProviderManager.ProviderType.OPENAI,
         ProviderManager.ProviderType.ANTHROPIC,
-        ProviderManager.ProviderType.OLLAMA,
         ProviderManager.ProviderType.LLAMA_CPP,
         ProviderManager.ProviderType.MLC_LLM
     )
 
-    /**
-     * Execute a request with automatic fallback.
-     * @param requestFn Function that takes a ProviderConfig and returns a response string
-     * @param onSwitched Callback invoked when switching to a different provider
-     */
     suspend fun execute(
         requestFn: suspend (ProviderManager.ProviderConfig) -> String,
         onSwitched: ((from: ProviderManager.ProviderType, to: ProviderManager.ProviderType) -> Unit)? = null
@@ -48,7 +45,6 @@ class FallbackChain @Inject constructor(
         val start = System.currentTimeMillis()
         val activeType = providerManager.activeProvider.value
 
-        // Build ordered chain: active first, then others in fallback order
         val chain = buildList {
             add(activeType)
             fallbackOrder.filter { it != activeType && providerManager.getProviderConfig(it)?.isEnabled == true }
@@ -65,15 +61,15 @@ class FallbackChain @Inject constructor(
             }
             if (attempt > 0) onSwitched?.invoke(chain[attempt - 1], type)
             try {
-                Log.d(TAG, "Trying provider ${type} (attempt $attempt)")
+                Log.d(TAG, "Trying provider $type (attempt $attempt)")
                 val providerStart = System.currentTimeMillis()
                 val response = requestFn(cfg)
                 val latency  = System.currentTimeMillis() - providerStart
                 providerManager.reportSuccess(type, latency)
                 return ChainResult(
-                    response      = response,
-                    usedProvider  = type,
-                    attemptCount  = attempt + 1,
+                    response       = response,
+                    usedProvider   = type,
+                    attemptCount   = attempt + 1,
                     totalLatencyMs = System.currentTimeMillis() - start
                 )
             } catch (e: CancellationException) {

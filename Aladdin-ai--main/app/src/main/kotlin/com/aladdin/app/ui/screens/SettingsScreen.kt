@@ -43,8 +43,6 @@ object AladdinPrefs {
     val MOOD_DETECT    = booleanPreferencesKey("mood_detection")
 }
 
-// ─── Phase 6 Item 2: SettingsScreen with DataStore persistence + Save + Theme ─
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -55,100 +53,47 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // Bug fix (2026-07-05): there used to be NO way in the whole app to enter a
-    // Gemini/OpenAI/Ollama key — chat replies always silently failed because
-    // the LLM backend was hardcoded to a local Ollama server nobody had running.
-    // This wires the Settings screen to ProviderConfig (the same store the chat
-    // pipeline now reads from) so entering a key here actually fixes chat.
     val providerConfig = remember { ProviderConfig(context) }
-    var geminiApiKey  by remember { mutableStateOf(providerConfig.geminiApiKey) }
-    // Custom-base-URL fix (2026-07-08): replaced the old separate Host +
-    // Port fields (which assumed plain http:// and always required a
-    // port) with one full Server URL field — supports https, tunnels
-    // (e.g. ngrok), and URLs with no explicit port — plus a configurable
-    // API Path so servers exposing "/api" instead of "/v1" also work.
-    var ollamaServerUrl by remember { mutableStateOf(providerConfig.ollamaBaseUrl) }
-    var ollamaApiPath   by remember { mutableStateOf(providerConfig.ollamaApiPath) }
-    var ollamaModel   by remember { mutableStateOf(providerConfig.ollamaModel) }
+    var geminiApiKey       by remember { mutableStateOf(providerConfig.geminiApiKey) }
+    var geminiModel        by remember { mutableStateOf(providerConfig.geminiModel) }
     var providerSaveResult by remember { mutableStateOf<Boolean?>(null) }
-    var testingConnection by remember { mutableStateOf(false) }
-    var connectionTestResult by remember { mutableStateOf<String?>(null) }
-
-    // On-device vs server — settled 2026-07-08 (see /ARCHITECTURE_DECISIONS.md):
-    // an external Ollama/OpenAI-compatible server is the default, stable path.
-    // On-device llama.cpp hung/lagged on this hardware, so it's kept as an
-    // opt-in-only fallback (ProviderConfig.preferredProvider = "local"),
-    // never the default. This flag just surfaces that choice in the UI.
+    var testingGemini      by remember { mutableStateOf(false) }
+    var geminiTestResult   by remember { mutableStateOf<String?>(null) }
     var useOnDeviceFallback by remember { mutableStateOf(providerConfig.preferredProvider == "local") }
 
-    // Connection-test fix (2026-07-08): now verifies BOTH the server AND the
-    // model (via the server's model-list endpoint), and reports distinct,
-    // specific outcomes — timeout, connection refused, unresolvable host,
-    // TLS error, HTTP 404, and "model not found" — instead of one generic
-    // "can't reach" message for every failure type.
-    fun testOllamaConnection() {
+    /** Validate the Gemini key by calling the models list endpoint. */
+    fun testGemini() {
         scope.launch {
-            testingConnection = true
-            connectionTestResult = null
-
-            val base = ollamaServerUrl.trim().trimEnd('/')
-            val path = ollamaApiPath.trim().trimEnd('/').let { if (it.startsWith("/")) it else "/$it" }
-            val native = path.trimStart('/').substringBefore('/').equals("api", ignoreCase = true)
-            val listUrl = base + path + if (native) "/tags" else "/models"
-            val modelName = ollamaModel.trim()
-
-            data class Probe(val code: Int, val body: String?, val error: String?)
-
-            val probe = withContext(Dispatchers.IO) {
+            testingGemini = true
+            geminiTestResult = null
+            val key = geminiApiKey.trim()
+            if (key.isBlank()) {
+                geminiTestResult = "❌ Please enter a Gemini API key first."
+                testingGemini = false
+                return@launch
+            }
+            val url = "https://generativelanguage.googleapis.com/v1beta/models?key=$key"
+            val result = withContext(Dispatchers.IO) {
                 try {
-                    val conn = URL(listUrl).openConnection() as HttpURLConnection
-                    conn.connectTimeout = 5000
-                    conn.readTimeout = 5000
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    conn.connectTimeout = 8000
+                    conn.readTimeout = 8000
                     conn.requestMethod = "GET"
                     val code = conn.responseCode
-                    val stream = if (code in 200..299) conn.inputStream else conn.errorStream
-                    val body = try { stream?.bufferedReader()?.readText() } catch (_: Exception) { null }
                     conn.disconnect()
-                    Probe(code, body, null)
-                } catch (e: java.net.SocketTimeoutException) {
-                    Probe(-1, null, "timeout")
-                } catch (e: java.net.ConnectException) {
-                    Probe(-1, null, "refused")
-                } catch (e: java.net.UnknownHostException) {
-                    Probe(-1, null, "unknown_host")
-                } catch (e: javax.net.ssl.SSLException) {
-                    Probe(-1, null, "ssl:${e.message}")
-                } catch (e: Exception) {
-                    Probe(-1, null, "error:${e.message ?: e.javaClass.simpleName}")
-                }
+                    code
+                } catch (e: Exception) { -1 }
             }
-
-            testingConnection = false
-            connectionTestResult = when {
-                probe.error == "timeout" ->
-                    "⏱️ Timeout — $listUrl didn't respond in time. Is the server running and reachable (check tunnel/VPN/firewall)?"
-                probe.error == "refused" ->
-                    "🔌 Connection refused — nothing is listening at $base. Double-check the Server URL and that the server is running."
-                probe.error == "unknown_host" ->
-                    "🌐 Can't resolve host — check the Server URL for typos (missing https://, wrong domain, etc.)."
-                probe.error?.startsWith("ssl") == true ->
-                    "🔒 HTTPS/TLS error — ${probe.error.removePrefix("ssl:")}. If it's a self-signed cert, try http:// or fix the server's certificate."
-                probe.error != null ->
-                    "❌ ${probe.error}"
-                probe.code == 404 ->
-                    "❌ 404 Not Found at $listUrl — try switching API Path between '/v1' (OpenAI-compatible) and '/api' (native Ollama)."
-                probe.code !in 200..299 ->
-                    "⚠️ Server responded with HTTP ${probe.code} at $listUrl — check the API Path and server type."
-                else -> {
-                    val hasModel = modelName.isBlank() || probe.body?.contains(modelName, ignoreCase = true) == true
-                    if (hasModel) {
-                        "✅ Connected — server reachable at $base and model '$modelName' is available."
-                    } else {
-                        "⚠️ Connected to server, but model '$modelName' wasn't found. Pull it there first (e.g. `ollama pull $modelName`) or fix the model name above."
-                    }
-                }
+            testingGemini = false
+            geminiTestResult = when (result) {
+                200  -> "✅ Gemini key is valid and working."
+                400  -> "❌ Bad request — check your API key format."
+                401, 403 -> "❌ Invalid or expired API key. Get a fresh one at aistudio.google.com/apikey."
+                429  -> "⚠️ Rate limit hit — key is valid but quota is exhausted. Try again later."
+                -1   -> "⚠️ Network error — check your internet connection."
+                else -> "⚠️ Unexpected response (HTTP $result). Key may still work."
             }
-            Toast.makeText(context, connectionTestResult, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, geminiTestResult, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -165,7 +110,6 @@ fun SettingsScreen(
     var isSaving            by remember { mutableStateOf(false) }
     var saveResult          by remember { mutableStateOf<Boolean?>(null) }
 
-    // Load from DataStore on first composition
     LaunchedEffect(Unit) {
         try {
             val prefs = context.dataStore.data.first()
@@ -179,7 +123,6 @@ fun SettingsScreen(
             proactiveSugg       = prefs[AladdinPrefs.PROACTIVE]      ?: true
             locationAware       = prefs[AladdinPrefs.LOCATION]       ?: true
             moodDetection       = prefs[AladdinPrefs.MOOD_DETECT]    ?: true
-            Log.i("SettingsScreen", "Preferences loaded from DataStore")
         } catch (e: Exception) {
             Log.e("SettingsScreen", "Failed to load prefs: ${e.message}")
         }
@@ -205,7 +148,6 @@ fun SettingsScreen(
                 onThemeChanged?.invoke(darkTheme)
                 saveResult = true
                 Toast.makeText(context, "Settings saved", Toast.LENGTH_SHORT).show()
-                Log.i("SettingsScreen", "Preferences saved to DataStore")
             } catch (e: Exception) {
                 saveResult = false
                 Toast.makeText(context, "Failed to save settings", Toast.LENGTH_SHORT).show()
@@ -222,7 +164,6 @@ fun SettingsScreen(
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
         )
 
-        // Save result banner
         AnimatedVisibility(visible = saveResult != null) {
             saveResult?.let { ok ->
                 Card(
@@ -251,12 +192,11 @@ fun SettingsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // ── Phase 6 Item 6: Theme switching ──────────────────────────────
             item {
                 SettingsSection("Appearance") {
                     SettingsToggle(
                         title = "Dark Theme",
-                        subtitle = "Switch between dark and light mode — takes effect immediately",
+                        subtitle = "Switch between dark and light mode",
                         icon = Icons.Filled.DarkMode,
                         checked = darkTheme,
                         onCheckedChange = { darkTheme = it }
@@ -314,14 +254,12 @@ fun SettingsScreen(
                 }
             }
 
-            // ── Bug fix (2026-07-05): AI Provider — this was completely missing.
-            // Without a Gemini key configured here (or Ollama running locally),
-            // chat had no way to ever get a reply.
+            // ── AI Provider — Gemini only ──────────────────────────────────────
             item {
-                SettingsSection("AI Provider") {
+                SettingsSection("AI Provider — Gemini") {
                     Text(
-                        "Chat replies need a working AI backend. Easiest: paste a free " +
-                            "Gemini API key from aistudio.google.com/apikey below.",
+                        "Aladdin uses Google Gemini as its AI brain. Paste your free API key " +
+                        "from aistudio.google.com/apikey below, then tap Save.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -330,38 +268,17 @@ fun SettingsScreen(
                         value = geminiApiKey,
                         onValueChange = { geminiApiKey = it },
                         label = { Text("Gemini API Key") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Or, if you're running Ollama / an OpenAI-compatible server (local, LAN, or a remote https:// tunnel like ngrok):",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = ollamaServerUrl, onValueChange = { ollamaServerUrl = it },
-                        label = { Text("Server URL") },
-                        placeholder = { Text("https://struck-activist-credible.ngrok-free.dev") },
-                        supportingText = { Text("Full URL — http:// or https://, port only if the server needs one") },
+                        placeholder = { Text("AIzaSy...") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(4.dp))
                     OutlinedTextField(
-                        value = ollamaApiPath, onValueChange = { ollamaApiPath = it },
-                        label = { Text("API Path") },
-                        placeholder = { Text("/v1") },
-                        supportingText = { Text("'/v1' for OpenAI-compatible servers, '/api' for Ollama's native API") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedTextField(
-                        value = ollamaModel, onValueChange = { ollamaModel = it },
-                        label = { Text("Model") },
-                        placeholder = { Text("llama3.2:3b, gemma3:1b, or any installed model") },
+                        value = geminiModel,
+                        onValueChange = { geminiModel = it },
+                        label = { Text("Gemini Model") },
+                        placeholder = { Text("gemini-1.5-flash") },
+                        supportingText = { Text("gemini-1.5-flash (fast/free) or gemini-1.5-pro") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -370,11 +287,9 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 providerConfig.geminiApiKey = geminiApiKey.trim()
-                                providerConfig.ollamaBaseUrl = ollamaServerUrl.trim()
-                                providerConfig.ollamaApiPath = ollamaApiPath.trim()
-                                providerConfig.ollamaModel = ollamaModel.trim()
+                                providerConfig.geminiModel  = geminiModel.trim().ifBlank { "gemini-1.5-flash" }
                                 providerSaveResult = true
-                                Toast.makeText(context, "AI provider settings saved", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Gemini settings saved", Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f)
                         ) {
@@ -383,52 +298,43 @@ fun SettingsScreen(
                             Text("Save")
                         }
                         OutlinedButton(
-                            onClick = ::testOllamaConnection,
-                            enabled = !testingConnection,
+                            onClick = ::testGemini,
+                            enabled = !testingGemini,
                             modifier = Modifier.weight(1f)
                         ) {
-                            if (testingConnection) {
+                            if (testingGemini) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
                                 Icon(Icons.Filled.NetworkCheck, contentDescription = null)
                             }
                             Spacer(Modifier.width(8.dp))
-                            Text("Test Connection")
+                            Text("Test Gemini")
                         }
                     }
-                    connectionTestResult?.let {
+                    geminiTestResult?.let {
                         Spacer(Modifier.height(4.dp))
                         Text(it, style = MaterialTheme.typography.bodySmall)
                     }
                     Spacer(Modifier.height(12.dp))
                     Divider()
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Settled decision (2026-07-08): a server (Ollama/OpenAI-compatible, above) " +
-                            "is the default AI backend — it's fast and reliable on this device. " +
-                            "Fully on-device (offline, no server needed) is available but was too slow " +
-                            "on this hardware, so it's opt-in only. See ARCHITECTURE_DECISIONS.md.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     SettingsToggle(
                         title = "Use fully on-device model instead",
-                        subtitle = "No server needed, fully offline — but may be slow/laggy on this device",
+                        subtitle = "No internet needed, fully offline — may be slow on some devices",
                         icon = Icons.Filled.PhoneAndroid,
                         checked = useOnDeviceFallback
                     ) { checked ->
                         useOnDeviceFallback = checked
-                        providerConfig.preferredProvider = if (checked) "local" else "ollama"
+                        providerConfig.preferredProvider = if (checked) "local" else "gemini"
                         Toast.makeText(
                             context,
-                            if (checked) "Switched to on-device model (opt-in fallback)" else "Switched back to server (Ollama)",
+                            if (checked) "Switched to on-device model (offline)" else "Switched to Gemini",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             }
 
-            // ── Phase 6 Item 2: Save button with loading state ───────────────
             item {
                 Button(
                     onClick = ::save,
@@ -452,12 +358,12 @@ fun SettingsScreen(
 
             item {
                 SettingsSection("About") {
-                    InfoRow("Version", "1.0.0 — Phase 13 Complete")
-                    InfoRow("STT Engine", "Vosk (offline)")
-                    InfoRow("TTS Engine", "Piper (offline) / Android TTS")
-                    InfoRow("LLM", "Gemini 1.5 Flash / Local")
+                    InfoRow("Version", "1.0.0")
+                    InfoRow("STT Engine", "Whisper.cpp (offline)")
+                    InfoRow("TTS Engine", "Android TTS")
+                    InfoRow("LLM", "Gemini 1.5 Flash (cloud)")
                     InfoRow("Memory", "MiniLM embeddings + SQLite")
-                    InfoRow("Wake Word", "TFLite keyword spotter")
+                    InfoRow("Wake Word", "Neural ONNX classifier")
                 }
             }
         }

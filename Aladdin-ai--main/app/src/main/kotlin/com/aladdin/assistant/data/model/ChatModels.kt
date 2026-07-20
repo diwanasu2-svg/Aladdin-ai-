@@ -49,8 +49,8 @@ data class ConversationWithLastMessage(
 // ─── App Settings ─────────────────────────────────────────────────────────────
 @Serializable
 data class AppSettings(
-    val aiProvider: String = "openai",
-    val aiModel: String = "gpt-4o",
+    val aiProvider: String = "gemini",
+    val aiModel: String = "gemini-1.5-flash",
     val apiKey: String = "",
     val voiceEnabled: Boolean = true,
     val wakeWordEnabled: Boolean = false,
@@ -65,7 +65,7 @@ data class AppSettings(
     val notificationsEnabled: Boolean = true,
     val backgroundAssistant: Boolean = false,
     val privacyMode: Boolean = false,
-    val autoDeleteHistory: Int = 0, // 0 = never, days otherwise
+    val autoDeleteHistory: Int = 0,
     val hapticFeedback: Boolean = true,
     val soundEffects: Boolean = true
 )
@@ -84,10 +84,8 @@ data class AIProvider(
 )
 
 val SUPPORTED_PROVIDERS = listOf(
-    AIProvider("openai", "OpenAI", listOf("gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo")),
-    AIProvider("anthropic", "Anthropic Claude", listOf("claude-3-5-sonnet-20241022", "claude-3-haiku-20240307")),
-    AIProvider("google", "Google Gemini", listOf("gemini-1.5-pro", "gemini-1.5-flash")),
-    AIProvider("ollama", "Ollama (Local)", listOf("llama3.2", "mistral", "phi3"), requiresKey = false),
-    AIProvider("groq", "Groq", listOf("llama-3.1-70b-versatile", "mixtral-8x7b-32768")),
-    AIProvider("openrouter", "OpenRouter", listOf("meta-llama/llama-3.1-70b-instruct", "google/gemma-2-27b-it"))
+    AIProvider("gemini",    "Google Gemini",      listOf("gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash")),
+    AIProvider("openai",    "OpenAI",             listOf("gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo")),
+    AIProvider("anthropic", "Anthropic Claude",   listOf("claude-3-5-sonnet-20241022", "claude-3-haiku-20240307")),
+    AIProvider("groq",      "Groq",               listOf("llama-3.1-70b-versatile", "mixtral-8x7b-32768"))
 )

@@ -9,16 +9,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * ProviderManager — Item 20: Provider Auto-Switch
+ * ProviderManager — Provider Auto-Switch
  *
- * Registers all LLM providers, implements auto-switch logic with fallback chain.
- * Provider priority: Local (llama.cpp / MLC) → Gemini → OpenAI → Anthropic → Ollama
- *
- * Auto-switch triggers:
- *  - Provider health check failure (3 consecutive errors)
- *  - Response latency exceeds threshold
- *  - Rate limit hit
- *  - Network unavailable (switches to offline provider)
+ * Gemini is the default and primary LLM provider.
+ * On-device llama.cpp and MLC are available as local fallbacks.
+ * Ollama has been removed.
  */
 @Singleton
 class ProviderManager @Inject constructor(
@@ -31,10 +26,8 @@ class ProviderManager @Inject constructor(
         private const val HEALTH_CHECK_INTERVAL_MS = 30_000L
     }
 
-    // ── Provider definitions ──────────────────────────────────────────────────
-
     enum class ProviderType {
-        LLAMA_CPP, MLC_LLM, GEMINI, OPENAI, ANTHROPIC, OLLAMA
+        LLAMA_CPP, MLC_LLM, GEMINI, OPENAI, ANTHROPIC
     }
 
     data class ProviderConfig(
@@ -59,8 +52,6 @@ class ProviderManager @Inject constructor(
         var lastCheckedMs: Long = 0L
     )
 
-    // ── State ─────────────────────────────────────────────────────────────────
-
     private val providers = mutableMapOf<ProviderType, ProviderConfig>()
     private val health    = mutableMapOf<ProviderType, ProviderHealth>()
 
@@ -72,8 +63,6 @@ class ProviderManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    // ── Initialization ────────────────────────────────────────────────────────
-
     init {
         registerDefaultProviders()
         loadSavedConfig()
@@ -82,12 +71,11 @@ class ProviderManager @Inject constructor(
 
     private fun registerDefaultProviders() {
         listOf(
-            ProviderConfig(ProviderType.LLAMA_CPP,  "llama.cpp (Local)",       isLocal = true,  requiresApiKey = false, defaultModel = "llama-3.2-3b-instruct.Q4_K_M.gguf"),
-            ProviderConfig(ProviderType.MLC_LLM,    "MLC LLM (GPU)",           isLocal = true,  requiresApiKey = false, defaultModel = "Llama-3.2-1B-Instruct-q4f16_1"),
-            ProviderConfig(ProviderType.GEMINI,     "Google Gemini",           isLocal = false, requiresApiKey = true,  defaultModel = "gemini-2.0-flash", endpoint = "https://generativelanguage.googleapis.com"),
-            ProviderConfig(ProviderType.OPENAI,     "OpenAI",                  isLocal = false, requiresApiKey = true,  defaultModel = "gpt-4o-mini",       endpoint = "https://api.openai.com"),
-            ProviderConfig(ProviderType.ANTHROPIC,  "Anthropic Claude",        isLocal = false, requiresApiKey = true,  defaultModel = "claude-3-5-haiku-20241022", endpoint = "https://api.anthropic.com"),
-            ProviderConfig(ProviderType.OLLAMA,     "Ollama (Self-hosted)",    isLocal = true,  requiresApiKey = false, defaultModel = "llama3.2:3b", endpoint = "http://10.159.85.23:11434")
+            ProviderConfig(ProviderType.LLAMA_CPP, "llama.cpp (Local)",    isLocal = true,  requiresApiKey = false, defaultModel = "llama-3.2-3b-instruct.Q4_K_M.gguf"),
+            ProviderConfig(ProviderType.MLC_LLM,   "MLC LLM (GPU)",        isLocal = true,  requiresApiKey = false, defaultModel = "Llama-3.2-1B-Instruct-q4f16_1"),
+            ProviderConfig(ProviderType.GEMINI,    "Google Gemini",        isLocal = false, requiresApiKey = true,  defaultModel = "gemini-1.5-flash", endpoint = "https://generativelanguage.googleapis.com"),
+            ProviderConfig(ProviderType.OPENAI,    "OpenAI",               isLocal = false, requiresApiKey = true,  defaultModel = "gpt-4o-mini",       endpoint = "https://api.openai.com"),
+            ProviderConfig(ProviderType.ANTHROPIC, "Anthropic Claude",     isLocal = false, requiresApiKey = true,  defaultModel = "claude-3-5-haiku-20241022", endpoint = "https://api.anthropic.com")
         ).forEach { cfg ->
             providers[cfg.type] = cfg
             health[cfg.type]    = ProviderHealth(cfg.type)
@@ -111,8 +99,6 @@ class ProviderManager @Inject constructor(
         }
         Log.d(TAG, "Config loaded — active=${_activeProvider.value}")
     }
-
-    // ── Public API ────────────────────────────────────────────────────────────
 
     fun getActiveConfig(): ProviderConfig = providers[_activeProvider.value]
         ?: providers.values.first()
@@ -152,7 +138,7 @@ class ProviderManager @Inject constructor(
     fun reportSuccess(type: ProviderType, latencyMs: Long) {
         val h = health[type] ?: return
         h.consecutiveErrors = 0
-        h.avgLatencyMs = (h.avgLatencyMs * 3 + latencyMs) / 4   // EMA
+        h.avgLatencyMs = (h.avgLatencyMs * 3 + latencyMs) / 4
         h.isAvailable = true
         if (latencyMs > LATENCY_THRESHOLD_MS && type == _activeProvider.value) {
             scope.launch { autoSwitch(reason = "High latency ($latencyMs ms)") }
@@ -166,8 +152,6 @@ class ProviderManager @Inject constructor(
             cm.activeNetworkInfo?.isConnected == true
         } catch (_: Exception) { false }
     }
-
-    // ── Auto-switch logic ─────────────────────────────────────────────────────
 
     private suspend fun autoSwitch(reason: String) {
         val current = _activeProvider.value
@@ -185,9 +169,10 @@ class ProviderManager @Inject constructor(
 
     private fun findFallback(exclude: ProviderType): ProviderType? {
         val online = isOnline()
-        // Prefer local providers if offline; prefer cloud if online and faster
-        val ordered = if (online) listOf(ProviderType.GEMINI, ProviderType.OPENAI, ProviderType.ANTHROPIC, ProviderType.OLLAMA, ProviderType.LLAMA_CPP, ProviderType.MLC_LLM)
-                      else        listOf(ProviderType.LLAMA_CPP, ProviderType.MLC_LLM, ProviderType.OLLAMA)
+        val ordered = if (online)
+            listOf(ProviderType.GEMINI, ProviderType.OPENAI, ProviderType.ANTHROPIC, ProviderType.LLAMA_CPP, ProviderType.MLC_LLM)
+        else
+            listOf(ProviderType.LLAMA_CPP, ProviderType.MLC_LLM)
         return ordered.firstOrNull { type ->
             type != exclude &&
             providers[type]?.isEnabled == true &&
@@ -195,8 +180,6 @@ class ProviderManager @Inject constructor(
             (providers[type]?.requiresApiKey == false || providers[type]?.apiKey?.isNotBlank() == true)
         }
     }
-
-    // ── Health monitor ────────────────────────────────────────────────────────
 
     private fun startHealthMonitor() {
         scope.launch {
@@ -209,8 +192,7 @@ class ProviderManager @Inject constructor(
 
     private fun checkProviderHealth() {
         val now = System.currentTimeMillis()
-        health.forEach { (type, h) ->
-            // Reset errors older than 5 minutes
+        health.forEach { (_, h) ->
             if (h.consecutiveErrors > 0 && now - h.lastErrorMs > 5 * 60_000L) {
                 h.consecutiveErrors = 0
                 h.isAvailable = true
@@ -232,8 +214,6 @@ class ProviderManager @Inject constructor(
             }
         }.apply()
     }
-
-    // ── Events ────────────────────────────────────────────────────────────────
 
     sealed class ProviderEvent {
         data class SwitchedTo(val type: ProviderType) : ProviderEvent()

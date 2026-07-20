@@ -35,9 +35,12 @@ class StreamingSTT(
         private const val CHUNK_MS = 300L
         private const val CHUNK_SAMPLES = (SAMPLE_RATE * CHUNK_MS / 1000).toInt()
         private const val MAX_BUFFER_SEC = 30
+        // Absolute max recording time — prevents the loop running forever when
+        // Whisper returns blank partials (e.g. native lib not linked).
+        private const val MAX_RECORD_MS = 15_000L
     }
 
-    var silenceTimeoutMs: Long = 350L
+    var silenceTimeoutMs: Long = 1500L  // increased: 350 ms was too aggressive
 
     sealed class TranscriptEvent {
         data class Partial(val text: String) : TranscriptEvent()
@@ -83,6 +86,7 @@ class StreamingSTT(
         val buf = ShortArray(CHUNK_SAMPLES)
         var lastPartial = ""
         var lastVoiceMs = System.currentTimeMillis()
+        val recordingStartMs = System.currentTimeMillis()
 
         try {
             while (isRecording.get() && currentCoroutineContext().isActive) {
@@ -102,8 +106,14 @@ class StreamingSTT(
                     _flow.emit(TranscriptEvent.Partial(partial))
                 }
 
-                // Silence timeout
-                if (System.currentTimeMillis() - lastVoiceMs >= silenceTimeoutMs && lastPartial.isNotBlank()) {
+                val now = System.currentTimeMillis()
+                val silenceMs = now - lastVoiceMs
+                val totalMs   = now - recordingStartMs
+
+                // Stop when: (a) silence after speech, or (b) absolute max time reached
+                if (silenceMs >= silenceTimeoutMs && lastPartial.isNotBlank()) break
+                if (totalMs >= MAX_RECORD_MS) {
+                    Log.i(TAG, "Max recording time reached — forcing final decode")
                     break
                 }
             }

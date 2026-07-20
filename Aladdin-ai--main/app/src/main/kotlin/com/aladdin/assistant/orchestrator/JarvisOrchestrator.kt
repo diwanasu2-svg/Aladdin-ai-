@@ -365,9 +365,7 @@ class JarvisOrchestrator @Inject constructor(@ApplicationContext private val con
                         addMsg(Message(
                             UUID.randomUUID().toString(),
                             "assistant",
-                            "⚠️ Couldn't reach the AI: ${event.message}\n" +
-                                "Add a Gemini API key in Settings (easiest — free at aistudio.google.com), " +
-                                "or make sure Ollama is running locally."
+                            "⚠️ ${event.message}"
                         ))
                         streamingTts.stopSpeaking()
                         startWakeWordListening()

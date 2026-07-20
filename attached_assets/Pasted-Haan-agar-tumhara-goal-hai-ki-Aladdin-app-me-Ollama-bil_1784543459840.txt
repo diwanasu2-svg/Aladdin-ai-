@@ -1,0 +1,64 @@
+Haan, agar tumhara goal hai ki **Aladdin app me Ollama bilkul na rahe aur sirf Gemini chale**, to repository me ye kaam karna padega:
+
+```text
+@GitHub
+
+Repository: diwanasu2-svg/Aladdin-ai-
+
+Convert the Android app to a Gemini-only AI backend.
+
+Requirements:
+
+1. Completely remove all Ollama integration.
+   - Remove Ollama client.
+   - Remove OpenAI-compatible client.
+   - Remove all /v1 and /api request logic.
+   - Remove Server URL setting.
+   - Remove API Path setting.
+   - Remove Model setting.
+   - Remove Ollama connectivity tests.
+   - Remove Ollama background services.
+   - Remove all fallback logic related to Ollama.
+
+2. Make Gemini the only AI provider.
+   - Use the official Google GenAI SDK/API.
+   - Read the Gemini API key from app settings.
+   - Validate the key before sending requests.
+   - Send every chat request to Gemini.
+   - Return Gemini responses in the existing chat UI.
+
+3. Update Settings UI.
+   - Keep only:
+     - Gemini API Key
+     - Test Gemini
+     - Save
+   - Remove every Ollama-related option.
+
+4. Error handling.
+   - If the API key is missing:
+       "Please enter your Gemini API Key."
+   - If the API key is invalid:
+       "Invalid Gemini API Key."
+   - If the network fails:
+       Show a proper retry message.
+
+5. Keep all existing features working.
+   - Memory
+   - Voice input
+   - Text-to-speech
+   - Wake word
+   - Background service
+   - Chat history
+
+6. Update all configuration files and remove unused Ollama dependencies.
+
+7. Remove any unused imports, classes, resources, preferences, and permissions related to Ollama.
+
+8. Verify the project builds successfully without any Ollama code.
+
+Commit message:
+
+Remove Ollama completely and migrate the app to Gemini-only backend
+```
+
+**Aur ek zaroori baat:** Tumne apni **Gemini API key public chat me share kar di hai**. Use **immediately Google AI Studio me revoke/delete karke nayi key generate karo**. Shared API key ko secure nahi maana jata aur use dusre log bhi misuse kar sakte hain.

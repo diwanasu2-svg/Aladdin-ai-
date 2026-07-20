@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Item 73: HTTPS-only for cloud APIs; cleartext allowed for LAN (Ollama).
+  HTTPS-only for all cloud APIs.
+  Cleartext allowed only for localhost (local dev tools).
 -->
 <network-security-config>
     <domain-config cleartextTrafficPermitted="false">
@@ -15,9 +16,6 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain>127.0.0.1</domain>
-        <domain>10.159.85.23</domain>
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">10.0.0.0</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors><certificates src="system"/></trust-anchors>

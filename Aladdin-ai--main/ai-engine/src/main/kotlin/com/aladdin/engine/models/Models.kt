@@ -216,8 +216,7 @@ enum class AIErrorCode {
 data class AIEngineConfig(
     val llmProvider: LLMProvider = LLMProvider.GEMINI,
     val geminiApiKey: String = "",
-    val ollamaBaseUrl: String = "http://10.159.85.23:11434",
-    val ollamaModel: String = "llama3.2:3b",
+    val geminiModel: String = "gemini-1.5-flash",
     val maxContextTokens: Int = 4096,
     val maxRetries: Int = 3,
     val baseRetryDelayMs: Long = 500,
@@ -231,4 +230,4 @@ data class AIEngineConfig(
     val clarificationThreshold: Float = 0.55f
 )
 
-enum class LLMProvider { GEMINI, OLLAMA, STUB }
+enum class LLMProvider { GEMINI, STUB }
