@@ -4,7 +4,6 @@ Phase 8.8 — Upload Manager
 Auto-select correct files, monitor progress, support multiple uploads,
 detect success/failure, ask user confirmation when needed.
 """
-import logging
 from __future__ import annotations
 import asyncio, logging, os
 from dataclasses import asdict, dataclass, field

@@ -1,11 +1,10 @@
-import pickle
 """models/model_cache.py — Phase 14, Feature 6: Model Caching.
 
 LRU cache for prompts, responses, embeddings, and tokenization results
 with configurable TTL and persistent cross-session storage.
 """
-
 from __future__ import annotations
+import pickle
 
 import hashlib
 import json

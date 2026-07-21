@@ -4,7 +4,6 @@ Phase 7.3 — Person Tracking
 Continuously track people in camera feed, assign unique IDs,
 maintain tracking if person moves, handle leaving frame.
 """
-import logging
 from __future__ import annotations
 import asyncio, logging, time
 from dataclasses import dataclass, field

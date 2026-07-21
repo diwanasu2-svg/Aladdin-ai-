@@ -5,7 +5,6 @@ Analyse camera frames in real-time, detect objects continuously,
 monitor scene changes, combine voice commands with live analysis,
 optimise performance to avoid lag.
 """
-import logging
 from __future__ import annotations
 import asyncio, logging, queue, threading, time
 from dataclasses import dataclass, field

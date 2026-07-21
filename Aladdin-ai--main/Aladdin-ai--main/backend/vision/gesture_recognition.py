@@ -4,7 +4,6 @@ Phase 7.8 — Gesture Recognition
 Detect hand gestures, map to configurable actions, combine
 gesture + voice commands, reduce false detections with debounce.
 """
-import logging
 from __future__ import annotations
 import asyncio, logging, time
 from dataclasses import dataclass, field

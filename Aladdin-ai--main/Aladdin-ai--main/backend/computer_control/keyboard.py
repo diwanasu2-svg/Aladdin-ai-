@@ -1,6 +1,4 @@
 """Keyboard simulation — type text, shortcuts, function keys, hold keys via pynput."""
-import logging
-log = logging.getLogger(__name__)
 from __future__ import annotations
 import asyncio, logging, time
 from typing import List

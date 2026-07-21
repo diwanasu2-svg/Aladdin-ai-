@@ -269,7 +269,7 @@ class JWTHandler:
         return k
 
     @staticmethod
-    def _fingerlog.info(token: str) -> str:
+    def _fingerprint(token: str) -> str:
         return hashlib.sha256(token.encode()).hexdigest()[:16]
 
     def _cleanup_loop(self, interval: int) -> None:

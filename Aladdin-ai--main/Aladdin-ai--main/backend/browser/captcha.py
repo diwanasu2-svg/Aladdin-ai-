@@ -4,7 +4,6 @@ Phase 8.1 — CAPTCHA Handling
 Detect CAPTCHA presence, notify user, resume automation after solve,
 handle timeouts and failures gracefully.
 """
-import logging
 from __future__ import annotations
 import asyncio, logging, time
 from dataclasses import dataclass, field

@@ -259,7 +259,7 @@ class UserManager:
                 return profile
         return None
 
-    def set_voice_fingerlog.info(self, user_id: str, voice_hash: str) -> None:
+    def set_voice_fingerprint(self, user_id: str, voice_hash: str) -> None:
         if user_id in self._profiles:
             self._profiles[user_id].voice_fingerprint = voice_hash
             self._save_profile(user_id)

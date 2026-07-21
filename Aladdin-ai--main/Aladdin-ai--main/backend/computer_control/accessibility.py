@@ -1,5 +1,4 @@
 """Accessibility automation — inspect UI elements, tap by description, form-fill via pyautogui / AT-SPI."""
-import logging
 from __future__ import annotations
 import asyncio, logging, platform, time
 from typing import Any, Dict, List, Optional

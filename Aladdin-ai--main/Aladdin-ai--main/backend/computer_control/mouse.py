@@ -1,6 +1,4 @@
 """Mouse control — move, click, drag, scroll via pynput / pyautogui."""
-import logging
-log = logging.getLogger(__name__)
 from __future__ import annotations
 import asyncio, logging, math, time
 from typing import Tuple
